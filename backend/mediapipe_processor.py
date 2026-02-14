@@ -11,6 +11,19 @@ class MediaPipeProcessor:
     # Key lip landmark indices as per MediaPipe Face Mesh
     LIP_LANDMARKS = [0, 13, 14, 78, 308]  # Cupid's bow, inner lip top/bottom, outer corners
     
+    # Full outer lip contour for bounding box
+    OUTER_LIP_LANDMARKS = [
+        61, 146, 91, 181, 84, 17, 314, 405, 321, 375, 291,
+        409, 270, 269, 267, 0, 37, 39, 40, 185
+    ]
+    # Full inner lip contour
+    INNER_LIP_LANDMARKS = [
+        78, 95, 88, 178, 87, 14, 317, 402, 318, 324, 308,
+        415, 310, 311, 312, 13, 82, 81, 80, 191
+    ]
+    # All lip landmarks combined (for bounding box calculation)
+    ALL_LIP_LANDMARKS = list(set(LIP_LANDMARKS + OUTER_LIP_LANDMARKS + INNER_LIP_LANDMARKS))
+    
     def __init__(self):
         """Initialize MediaPipe Face Mesh detector."""
         try:
@@ -77,39 +90,44 @@ class MediaPipeProcessor:
             print(f"Error encoding frame: {e}")
             return ""
     
-    def extract_lip_landmarks(self, frame: np.ndarray) -> List[Dict[str, float]]:
-        """Extract lip landmarks from frame using MediaPipe."""
-        landmarks = []
+    def extract_lip_landmarks(self, frame: np.ndarray) -> Tuple[List[Dict[str, float]], List[Dict[str, float]], Optional[Dict]]:
+        """Extract lip landmarks from frame using MediaPipe.
+        Returns: (key_landmarks, all_lip_landmarks, bounding_box)"""
+        key_landmarks = []
+        all_landmarks = []
+        bounding_box = None
         
         if self.use_new_api is None:
-            # Dummy processor - return empty landmarks
-            return landmarks
+            return key_landmarks, all_landmarks, bounding_box
         
-        # Convert BGR to RGB
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         
         try:
             if self.use_new_api:
-                # New API
                 mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
                 face_landmarker_result = self.face_landmarker.detect(mp_image)
                 
                 if face_landmarker_result.face_landmarks:
-                    # Get the first face
                     face_landmarks = face_landmarker_result.face_landmarks[0]
                     
-                    # Extract lip landmarks
+                    # Key landmarks
                     for idx in self.LIP_LANDMARKS:
                         if idx < len(face_landmarks):
                             landmark = face_landmarks[idx]
-                            landmarks.append({
-                                'x': landmark.x,
-                                'y': landmark.y,
-                                'z': landmark.z,
-                                'index': idx
+                            key_landmarks.append({
+                                'x': landmark.x, 'y': landmark.y,
+                                'z': landmark.z, 'index': idx
+                            })
+                    
+                    # All lip landmarks for bounding box
+                    for idx in self.ALL_LIP_LANDMARKS:
+                        if idx < len(face_landmarks):
+                            landmark = face_landmarks[idx]
+                            all_landmarks.append({
+                                'x': landmark.x, 'y': landmark.y,
+                                'z': landmark.z, 'index': idx
                             })
             else:
-                # Legacy API
                 results = self.face_mesh.process(rgb_frame)
                 
                 if results.multi_face_landmarks:
@@ -117,34 +135,65 @@ class MediaPipeProcessor:
                         for idx in self.LIP_LANDMARKS:
                             if idx < len(face_landmarks.landmark):
                                 landmark = face_landmarks.landmark[idx]
-                                landmarks.append({
-                                    'x': landmark.x,
-                                    'y': landmark.y,
-                                    'z': landmark.z,
-                                    'index': idx
+                                key_landmarks.append({
+                                    'x': landmark.x, 'y': landmark.y,
+                                    'z': landmark.z, 'index': idx
+                                })
+                        
+                        for idx in self.ALL_LIP_LANDMARKS:
+                            if idx < len(face_landmarks.landmark):
+                                landmark = face_landmarks.landmark[idx]
+                                all_landmarks.append({
+                                    'x': landmark.x, 'y': landmark.y,
+                                    'z': landmark.z, 'index': idx
                                 })
         except Exception as e:
             print(f"Error in face landmark detection: {e}")
         
-        return landmarks
+        # Compute bounding box from all lip landmarks
+        if all_landmarks:
+            xs = [l['x'] for l in all_landmarks]
+            ys = [l['y'] for l in all_landmarks]
+            padding = 0.02  # 2% padding
+            bounding_box = {
+                'x': max(0, min(xs) - padding),
+                'y': max(0, min(ys) - padding),
+                'width': min(1, max(xs) - min(xs) + padding * 2),
+                'height': min(1, max(ys) - min(ys) + padding * 2)
+            }
+        
+        return key_landmarks, all_landmarks, bounding_box
     
     def process_frame(self, frame_data: str) -> Dict:
         """Process a frame: decode, extract landmarks, re-encode."""
-        # Decode frame
         frame = self.decode_frame(frame_data)
         if frame is None:
             return {'error': 'Failed to decode frame'}
         
-        # Extract lip landmarks
-        landmarks = self.extract_lip_landmarks(frame)
+        # Extract lip landmarks and bounding box
+        key_landmarks, all_lip_landmarks, lip_bounding_box = self.extract_lip_landmarks(frame)
         
-        # Re-encode frame (could add annotations here)
+        # Draw bounding box on the frame before encoding
+        if lip_bounding_box:
+            h, w = frame.shape[:2]
+            x1 = int(lip_bounding_box['x'] * w)
+            y1 = int(lip_bounding_box['y'] * h)
+            x2 = int((lip_bounding_box['x'] + lip_bounding_box['width']) * w)
+            y2 = int((lip_bounding_box['y'] + lip_bounding_box['height']) * h)
+            # Draw green bounding box
+            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+            # Label
+            cv2.putText(frame, 'LIPS', (x1, y1 - 8),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+        
         processed_frame_base64 = self.encode_frame(frame)
         
         return {
             'frame_base64': processed_frame_base64,
-            'landmarks': landmarks,
-            'landmark_count': len(landmarks)
+            'landmarks': key_landmarks,
+            'landmark_count': len(key_landmarks),
+            'lip_bounding_box': lip_bounding_box,
+            'all_lip_landmarks': all_lip_landmarks
         }
     
     def annotate_frame(self, frame: np.ndarray, landmarks: List[Dict[str, float]]) -> np.ndarray:

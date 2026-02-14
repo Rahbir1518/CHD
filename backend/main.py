@@ -2,7 +2,9 @@ import os
 import asyncio
 import uvicorn
 import time
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
+import base64
+import httpx
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
@@ -14,6 +16,8 @@ from mediapipe_processor import MediaPipeProcessor
 from phoneme_engine import phoneme_engine, load_lesson
 
 load_dotenv()
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
 app = FastAPI(
     title="HapticPhonix Backend",
@@ -249,6 +253,122 @@ async def startup_event():
     if os.path.exists(default_lesson):
         load_lesson(default_lesson)
         print("Default lesson loaded")
+
+
+# ── Gemini Transcription & Translation ──────────────────────────────────────
+
+@app.post("/api/transcribe")
+async def transcribe_audio(request: Request):
+    """
+    Transcribe audio using Gemini.
+    Accepts JSON with { audio_base64: string, mime_type?: string }
+    """
+    if not GEMINI_API_KEY:
+        return JSONResponse(status_code=500, content={"error": "GEMINI_API_KEY not configured"})
+
+    data = await request.json()
+    audio_b64 = data.get("audio_base64", "")
+    mime_type = data.get("mime_type", "audio/webm")
+
+    if not audio_b64:
+        return JSONResponse(status_code=400, content={"error": "No audio data provided"})
+
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
+
+    payload = {
+        "contents": [
+            {
+                "parts": [
+                    {
+                        "inline_data": {
+                            "mime_type": mime_type,
+                            "data": audio_b64
+                        }
+                    },
+                    {
+                        "text": "Transcribe this audio exactly. Return ONLY the transcribed text, nothing else. If the audio is silent or unclear, return an empty string."
+                    }
+                ]
+            }
+        ],
+        "generationConfig": {
+            "temperature": 0.1,
+            "maxOutputTokens": 1024
+        }
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post(url, json=payload)
+            resp.raise_for_status()
+            result = resp.json()
+
+        transcript = ""
+        if "candidates" in result and result["candidates"]:
+            parts = result["candidates"][0].get("content", {}).get("parts", [])
+            if parts:
+                transcript = parts[0].get("text", "").strip()
+
+        return {"transcript": transcript}
+    except Exception as e:
+        print(f"Gemini transcription error: {e}")
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+@app.post("/api/translate")
+async def translate_text(request: Request):
+    """
+    Translate text using Gemini.
+    Accepts JSON with { text: string, target_language: string }
+    """
+    if not GEMINI_API_KEY:
+        return JSONResponse(status_code=500, content={"error": "GEMINI_API_KEY not configured"})
+
+    data = await request.json()
+    text = data.get("text", "")
+    target_lang = data.get("target_language", "Spanish")
+
+    if not text:
+        return JSONResponse(status_code=400, content={"error": "No text provided"})
+
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
+
+    payload = {
+        "contents": [
+            {
+                "parts": [
+                    {
+                        "text": f"Translate the following text to {target_lang}. Return ONLY the translated text, nothing else.\n\nText: {text}"
+                    }
+                ]
+            }
+        ],
+        "generationConfig": {
+            "temperature": 0.2,
+            "maxOutputTokens": 1024
+        }
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post(url, json=payload)
+            resp.raise_for_status()
+            result = resp.json()
+
+        translation = ""
+        if "candidates" in result and result["candidates"]:
+            parts = result["candidates"][0].get("content", {}).get("parts", [])
+            if parts:
+                translation = parts[0].get("text", "").strip()
+
+        return {
+            "original": text,
+            "translation": translation,
+            "target_language": target_lang
+        }
+    except Exception as e:
+        print(f"Gemini translation error: {e}")
+        return JSONResponse(status_code=500, content={"error": str(e)})
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))

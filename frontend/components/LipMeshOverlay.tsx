@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect } from 'react';
 
 interface LipLandmark {
   x: number;
@@ -7,22 +7,31 @@ interface LipLandmark {
   index: number;
 }
 
+interface LipBoundingBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 interface LipMeshOverlayProps {
   landmarks: LipLandmark[];
   width: number;
   height: number;
   isVisible?: boolean;
+  lipBoundingBox?: LipBoundingBox | null;
 }
 
 const LipMeshOverlay: React.FC<LipMeshOverlayProps> = ({ 
   landmarks, 
   width, 
   height, 
-  isVisible = true 
+  isVisible = true,
+  lipBoundingBox = null
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   
-  // Draw landmarks on canvas
+  // Draw landmarks + bounding box on canvas
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || !isVisible) return;
@@ -33,29 +42,80 @@ const LipMeshOverlay: React.FC<LipMeshOverlayProps> = ({
     // Clear canvas
     ctx.clearRect(0, 0, width, height);
     
-    if (landmarks.length === 0) return;
+    if (landmarks.length === 0 && !lipBoundingBox) return;
     
-    // Draw each landmark
+    // ── Draw lip bounding box ──
+    if (lipBoundingBox) {
+      const bx = lipBoundingBox.x * width;
+      const by = lipBoundingBox.y * height;
+      const bw = lipBoundingBox.width * width;
+      const bh = lipBoundingBox.height * height;
+
+      // Outer glow
+      ctx.shadowColor = '#22c55e';
+      ctx.shadowBlur = 8;
+      ctx.strokeStyle = '#22c55e';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([]);
+      ctx.strokeRect(bx, by, bw, bh);
+      ctx.shadowBlur = 0;
+
+      // Corner accents
+      const cornerLen = Math.min(bw, bh) * 0.2;
+      ctx.strokeStyle = '#4ade80';
+      ctx.lineWidth = 3;
+      // Top-left
+      ctx.beginPath();
+      ctx.moveTo(bx, by + cornerLen);
+      ctx.lineTo(bx, by);
+      ctx.lineTo(bx + cornerLen, by);
+      ctx.stroke();
+      // Top-right
+      ctx.beginPath();
+      ctx.moveTo(bx + bw - cornerLen, by);
+      ctx.lineTo(bx + bw, by);
+      ctx.lineTo(bx + bw, by + cornerLen);
+      ctx.stroke();
+      // Bottom-left
+      ctx.beginPath();
+      ctx.moveTo(bx, by + bh - cornerLen);
+      ctx.lineTo(bx, by + bh);
+      ctx.lineTo(bx + cornerLen, by + bh);
+      ctx.stroke();
+      // Bottom-right
+      ctx.beginPath();
+      ctx.moveTo(bx + bw - cornerLen, by + bh);
+      ctx.lineTo(bx + bw, by + bh);
+      ctx.lineTo(bx + bw, by + bh - cornerLen);
+      ctx.stroke();
+
+      // Label
+      ctx.fillStyle = '#22c55e';
+      ctx.font = 'bold 11px Arial';
+      ctx.textAlign = 'left';
+      ctx.fillText('LIPS', bx + 4, by - 6);
+    }
+    
+    // ── Draw each landmark point ──
     landmarks.forEach(landmark => {
       const x = landmark.x * width;
       const y = landmark.y * height;
       
-      // Different styles for different landmarks
       let color: string;
       let radius: number;
       
       switch (landmark.index) {
-        case 0: // Cupid's bow - red
+        case 0:
           color = '#ef4444';
           radius = 4;
           break;
-        case 13: // Inner lip top - green
-        case 14: // Inner lip bottom - green
+        case 13:
+        case 14:
           color = '#10b981';
           radius = 3;
           break;
-        case 78: // Left outer corner - blue
-        case 308: // Right outer corner - blue
+        case 78:
+        case 308:
           color = '#3b82f6';
           radius = 3;
           break;
@@ -64,31 +124,27 @@ const LipMeshOverlay: React.FC<LipMeshOverlayProps> = ({
           radius = 2;
       }
       
-      // Draw circle
       ctx.beginPath();
       ctx.arc(x, y, radius, 0, 2 * Math.PI);
       ctx.fillStyle = color;
       ctx.fill();
-      
-      // Draw border
       ctx.strokeStyle = '#ffffff';
       ctx.lineWidth = 1;
+      ctx.setLineDash([]);
       ctx.stroke();
       
-      // Draw index label
       ctx.fillStyle = '#ffffff';
       ctx.font = '10px Arial';
       ctx.textAlign = 'center';
       ctx.fillText(landmark.index.toString(), x, y - 8);
     });
     
-    // Draw connections between landmarks
+    // ── Draw connections between landmarks ──
     if (landmarks.length >= 2) {
       ctx.strokeStyle = '#8b5cf6';
       ctx.lineWidth = 2;
       ctx.setLineDash([5, 3]);
       
-      // Connect cupids bow to inner lip
       const cupidBow = landmarks.find(l => l.index === 0);
       const innerTop = landmarks.find(l => l.index === 13);
       const innerBottom = landmarks.find(l => l.index === 14);
@@ -99,7 +155,6 @@ const LipMeshOverlay: React.FC<LipMeshOverlayProps> = ({
         ctx.lineTo(innerTop.x * width, innerTop.y * height);
         ctx.stroke();
       }
-      
       if (cupidBow && innerBottom) {
         ctx.beginPath();
         ctx.moveTo(cupidBow.x * width, cupidBow.y * height);
@@ -107,7 +162,7 @@ const LipMeshOverlay: React.FC<LipMeshOverlayProps> = ({
         ctx.stroke();
       }
     }
-  }, [landmarks, width, height, isVisible]);
+  }, [landmarks, width, height, isVisible, lipBoundingBox]);
   
   if (!isVisible) return null;
   
