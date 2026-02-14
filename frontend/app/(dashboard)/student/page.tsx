@@ -2,6 +2,9 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import ConnectionStatus from "@/components/ConnectionStatus";
+import { usePitchAnalysis } from "@/hooks/usePitchAnalysis";
+import { useLaryngealHaptics } from "@/hooks/useLaryngealHaptics";
+import { getTestSoundDescription } from "@/lib/laryngealHaptics";
 
 interface LipBoundingBox {
   x: number;
@@ -21,6 +24,41 @@ export default function StudentPage() {
   const [mouthState, setMouthState] = useState("unknown");
   const [lipBbox, setLipBbox] = useState<LipBoundingBox | null>(null);
   const [showProcessed, setShowProcessed] = useState(true);
+  const [showHapticPanel, setShowHapticPanel] = useState(false);
+
+  // ── Local pitch analysis (runs on-device for zero-latency haptics) ──
+  const pitch = usePitchAnalysis({
+    fftSize: 2048,
+    minFrequency: 50,
+    maxFrequency: 600,
+    silenceThreshold: 0.008,
+    yinThreshold: 0.15,
+  });
+
+  // ── Laryngeal haptic engine (converts pitch → dynamic vibration) ──
+  const haptics = useLaryngealHaptics({
+    minPitch: 80,
+    maxPitch: 400,
+    updateIntervalMs: 50,
+    smoothingAlpha: 0.35,
+    pulsesPerBatch: 4,
+  });
+
+  // Feed every pitch frame into the haptic engine for real-time vibration
+  useEffect(() => {
+    if (pitch.currentFrame && pitch.isActive) {
+      haptics.feed(pitch.currentFrame);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pitch.currentFrame, pitch.isActive]);
+
+  // Stop haptics when pitch analysis stops
+  useEffect(() => {
+    if (!pitch.isActive) {
+      haptics.stop();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pitch.isActive]);
 
   // Initialize with window location if possible
   useEffect(() => {
@@ -30,7 +68,7 @@ export default function StudentPage() {
     }
   }, []);
 
-  // Start Camera
+  // Start Camera + Mic together
   const startCamera = async () => {
     try {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -46,6 +84,15 @@ export default function StudentPage() {
         videoRef.current.srcObject = stream;
       }
       setIsStreaming(true);
+
+      // Auto-start pitch analysis (mic) for haptic feedback
+      // The user gesture from tapping this button satisfies browser vibration policy
+      try {
+        await pitch.start();
+      } catch {
+        // Mic may be denied separately — camera still works
+        console.warn("Microphone denied. Haptic feedback unavailable.");
+      }
     } catch (err: any) {
       console.error("Error accessing camera:", err);
       alert(err.message || "Could not access camera.");
@@ -68,13 +115,16 @@ export default function StudentPage() {
       try {
         const data = JSON.parse(event.data);
 
-        // Haptic feedback
+        // Backend haptic feedback (fallback — local pitch engine is primary)
         if (
           data.type === "haptic_feedback" &&
           Array.isArray(data.pattern) &&
           data.pattern.length > 0
         ) {
-          if (navigator.vibrate) navigator.vibrate(data.pattern);
+          // Only use backend patterns if local pitch analysis isn't running
+          if (!pitch.isActive && navigator.vibrate) {
+            navigator.vibrate(data.pattern);
+          }
         }
 
         // Processed frame with bounding boxes from server
@@ -96,7 +146,7 @@ export default function StudentPage() {
     ws.onclose = () => setStatus("disconnected");
     ws.onerror = () => setStatus("error");
     setSocket(ws);
-  }, [serverUrl, socket]);
+  }, [serverUrl, socket, pitch.isActive]);
 
   // Send frames loop
   useEffect(() => {
@@ -132,11 +182,32 @@ export default function StudentPage() {
   };
   const stateInfo = mouthStateConfig[mouthState] || mouthStateConfig.unknown;
 
+  // Pitch display helper
+  const pitchLabel = pitch.currentFrame
+    ? pitch.currentFrame.pitch > 0
+      ? `${pitch.currentFrame.pitch.toFixed(0)} Hz`
+      : "—"
+    : "—";
+
   return (
     <div className="flex flex-col h-screen bg-black text-white p-4">
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-lg font-bold">Student Cam</h1>
         <div className="flex items-center gap-3">
+          {/* Haptic status indicator */}
+          {pitch.isActive && (
+            <div
+              className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs cursor-pointer transition-colors ${
+                haptics.state.isVibrating
+                  ? "bg-purple-900/60 border border-purple-500/40 text-purple-300 animate-pulse"
+                  : "bg-gray-800 border border-gray-700 text-gray-400"
+              }`}
+              onClick={() => setShowHapticPanel(!showHapticPanel)}
+            >
+              <span>📳</span>
+              <span>{haptics.state.isVibrating ? haptics.state.feelLabel : "Haptics"}</span>
+            </div>
+          )}
           {/* Mouth state badge */}
           {mouthState !== "unknown" && (
             <div
@@ -172,9 +243,136 @@ export default function StudentPage() {
         </div>
       </div>
 
-      {/* View toggle */}
-      {processedFrameSrc && (
-        <div className="mb-2 flex justify-center">
+      {/* ── Haptic Feedback Panel (collapsible) ── */}
+      {showHapticPanel && pitch.isActive && (
+        <div className="mb-4 bg-gray-900 rounded-lg border border-gray-800 overflow-hidden">
+          <div className="p-3 border-b border-gray-800 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className={`w-2 h-2 rounded-full ${
+                haptics.state.isVibrating ? "bg-purple-400 animate-pulse" : haptics.enabled ? "bg-gray-500" : "bg-red-500"
+              }`} />
+              <span className="text-sm font-semibold text-gray-200">📳 Haptic Vibration</span>
+              {haptics.state.isVibrating && (
+                <span className="text-[10px] bg-purple-900/50 text-purple-300 px-2 py-0.5 rounded-full font-mono border border-purple-500/30">
+                  VIBRATING
+                </span>
+              )}
+            </div>
+            {/* Enable/disable toggle */}
+            <button
+              onClick={() => haptics.setEnabled(!haptics.enabled)}
+              className={`relative w-10 h-5 rounded-full transition-colors ${
+                haptics.enabled ? "bg-purple-600" : "bg-gray-700"
+              }`}
+            >
+              <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${
+                haptics.enabled ? "translate-x-5" : "translate-x-0"
+              }`} />
+            </button>
+          </div>
+
+          {!haptics.isSupported && (
+            <div className="px-3 py-2 bg-amber-900/30 border-b border-amber-500/20 text-amber-400 text-xs">
+              ⚠️ Vibration API not supported. Use Android Chrome for haptic feedback.
+            </div>
+          )}
+
+          {haptics.enabled && (
+            <div className="p-3 space-y-3">
+              {/* Live stats row */}
+              <div className="grid grid-cols-4 gap-2">
+                <div className="bg-gray-800/60 rounded-lg p-2 text-center">
+                  <div className="text-[9px] uppercase text-gray-500 font-semibold">Pitch</div>
+                  <div className="text-sm font-bold font-mono text-sky-400">{pitchLabel}</div>
+                </div>
+                <div className="bg-gray-800/60 rounded-lg p-2 text-center">
+                  <div className="text-[9px] uppercase text-gray-500 font-semibold">Feel</div>
+                  <div className={`text-sm font-bold truncate ${haptics.state.isVibrating ? "text-purple-400" : "text-gray-600"}`}>
+                    {haptics.state.feelLabel}
+                  </div>
+                </div>
+                <div className="bg-gray-800/60 rounded-lg p-2 text-center">
+                  <div className="text-[9px] uppercase text-gray-500 font-semibold">Cycle</div>
+                  <div className="text-sm font-bold font-mono text-emerald-400">
+                    {haptics.state.cyclePeriodMs > 0 ? `${haptics.state.cyclePeriodMs}ms` : "—"}
+                  </div>
+                </div>
+                <div className="bg-gray-800/60 rounded-lg p-2 text-center">
+                  <div className="text-[9px] uppercase text-gray-500 font-semibold">Energy</div>
+                  <div className="text-sm font-bold font-mono text-amber-400">
+                    {pitch.currentFrame ? `${(pitch.currentFrame.rms * 100).toFixed(0)}%` : "—"}
+                  </div>
+                </div>
+              </div>
+
+              {/* Vibration intensity bar */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] text-gray-500 uppercase font-semibold">Vibration Intensity</span>
+                  <span className="text-[10px] text-gray-400 font-mono">
+                    {haptics.state.onDurationMs > 0 ? `${haptics.state.onDurationMs}ms pulse` : "idle"}
+                  </span>
+                </div>
+                <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-75"
+                    style={{
+                      width: `${haptics.state.isVibrating ? Math.min((haptics.state.onDurationMs / 60) * 100, 100) : 0}%`,
+                      background: haptics.state.isVibrating
+                        ? "linear-gradient(90deg, #a855f7, #ec4899)"
+                        : "#1e293b",
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Pattern display */}
+              {haptics.state.currentPattern.length > 0 && (
+                <div className="flex items-center gap-1 overflow-x-auto py-1">
+                  <span className="text-[10px] text-gray-500 font-mono shrink-0">Pattern:</span>
+                  {haptics.state.currentPattern.map((ms, i) => (
+                    <span
+                      key={i}
+                      className={`text-[10px] font-mono px-1 py-0.5 rounded ${
+                        i % 2 === 0
+                          ? "bg-purple-900/50 text-purple-300 border border-purple-500/30"
+                          : "bg-gray-800 text-gray-500"
+                      }`}
+                    >
+                      {ms}
+                    </span>
+                  ))}
+                  <span className="text-[10px] text-gray-600 font-mono">
+                    = {haptics.state.patternDurationMs}ms
+                  </span>
+                </div>
+              )}
+
+              {/* Quick test buttons */}
+              <div>
+                <div className="text-[10px] text-gray-500 uppercase font-semibold mb-1.5">Test Vibrations</div>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {(["v", "m", "z", "ah", "ee", "rising", "falling"] as const).map((sound) => (
+                    <button
+                      key={sound}
+                      onClick={() => haptics.playTest(sound)}
+                      disabled={!haptics.isSupported || !haptics.enabled}
+                      className="bg-purple-700 hover:bg-purple-600 disabled:opacity-30 disabled:cursor-not-allowed text-white text-[11px] font-medium px-2 py-1.5 rounded-lg transition-all active:scale-95"
+                      title={getTestSoundDescription(sound)}
+                    >
+                      {sound.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* View toggle + Haptic toggle row */}
+      <div className="mb-2 flex justify-center gap-2">
+        {processedFrameSrc && (
           <button
             onClick={() => setShowProcessed(!showProcessed)}
             className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
@@ -185,8 +383,28 @@ export default function StudentPage() {
           >
             {showProcessed ? "🎯 Bounding Boxes ON" : "○ Bounding Boxes OFF"}
           </button>
-        </div>
-      )}
+        )}
+        {/* Mic/haptic toggle */}
+        {isStreaming && (
+          <button
+            onClick={async () => {
+              if (pitch.isActive) {
+                pitch.stop();
+                haptics.stop();
+              } else {
+                await pitch.start();
+              }
+            }}
+            className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+              pitch.isActive
+                ? "bg-purple-900/40 border-purple-500 text-purple-400"
+                : "bg-gray-800 border-gray-600 text-gray-400"
+            }`}
+          >
+            {pitch.isActive ? "📳 Haptics ON" : "📳 Haptics OFF"}
+          </button>
+        )}
+      </div>
 
       {/* Camera + Processed Feed */}
       <div className="relative flex-1 bg-black rounded-xl overflow-hidden border border-gray-800 shadow-2xl">
@@ -239,7 +457,7 @@ export default function StudentPage() {
                   d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
                 />
               </svg>
-              Start Camera
+              Start Camera + Mic
             </button>
           </div>
         )}
@@ -258,7 +476,18 @@ export default function StudentPage() {
           )}
         </div>
 
-        {isStreaming && !processedFrameSrc && status === "connected" && (
+        {/* Vibration indicator overlay on video feed */}
+        {haptics.state.isVibrating && (
+          <div className="absolute bottom-4 left-4 right-4 flex justify-center">
+            <div className="bg-purple-900/70 backdrop-blur text-purple-200 text-xs px-4 py-2 rounded-full border border-purple-500/40 flex items-center gap-2">
+              <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse" />
+              <span className="font-mono">{haptics.state.feelLabel}</span>
+              <span className="text-purple-400 font-mono">{pitchLabel}</span>
+            </div>
+          </div>
+        )}
+
+        {isStreaming && !processedFrameSrc && status === "connected" && !haptics.state.isVibrating && (
           <div className="absolute bottom-4 left-0 right-0 flex justify-center">
             <div className="bg-black/60 backdrop-blur text-white text-xs px-3 py-1 rounded-full border border-white/20 animate-pulse">
               Processing frames...
@@ -269,6 +498,11 @@ export default function StudentPage() {
 
       <div className="mt-4 text-center text-gray-500 text-xs">
         Ensure phone and dashboard are on the same Wi-Fi · Face the front camera
+        {pitch.isActive && (
+          <span className="block mt-1 text-purple-400">
+            🎙️ Mic active — speak to feel dynamic vibrations
+          </span>
+        )}
       </div>
     </div>
   );
