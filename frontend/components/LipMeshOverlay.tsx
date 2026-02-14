@@ -20,36 +20,56 @@ interface LipMeshOverlayProps {
   height: number;
   isVisible?: boolean;
   lipBoundingBox?: LipBoundingBox | null;
+  /** Intrinsic image size so overlay aligns with object-contain image */
+  imageNaturalWidth?: number;
+  imageNaturalHeight?: number;
 }
 
-const LipMeshOverlay: React.FC<LipMeshOverlayProps> = ({ 
-  landmarks, 
-  width, 
-  height, 
+const LipMeshOverlay: React.FC<LipMeshOverlayProps> = ({
+  landmarks,
+  width,
+  height,
   isVisible = true,
-  lipBoundingBox = null
+  lipBoundingBox = null,
+  imageNaturalWidth,
+  imageNaturalHeight,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  
+
+  // Content box: where the image is actually drawn (object-contain)
+  const content = (() => {
+    if (!imageNaturalWidth || !imageNaturalHeight || imageNaturalWidth <= 0 || imageNaturalHeight <= 0) {
+      return { offsetX: 0, offsetY: 0, scale: 1, cw: width, ch: height };
+    }
+    const scale = Math.min(width / imageNaturalWidth, height / imageNaturalHeight);
+    const cw = imageNaturalWidth * scale;
+    const ch = imageNaturalHeight * scale;
+    const offsetX = (width - cw) / 2;
+    const offsetY = (height - ch) / 2;
+    return { offsetX, offsetY, scale, cw, ch };
+  })();
+
+  const normToX = (nx: number) => content.offsetX + nx * content.cw;
+  const normToY = (ny: number) => content.offsetY + ny * content.ch;
+
   // Draw landmarks + bounding box on canvas
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || !isVisible) return;
-    
-    const ctx = canvas.getContext('2d');
+
+    const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    
-    // Clear canvas
+
     ctx.clearRect(0, 0, width, height);
-    
+
     if (landmarks.length === 0 && !lipBoundingBox) return;
-    
-    // ── Draw lip bounding box ──
+
+    // ── Draw lip bounding box (in image content area) ──
     if (lipBoundingBox) {
-      const bx = lipBoundingBox.x * width;
-      const by = lipBoundingBox.y * height;
-      const bw = lipBoundingBox.width * width;
-      const bh = lipBoundingBox.height * height;
+      const bx = normToX(lipBoundingBox.x);
+      const by = normToY(lipBoundingBox.y);
+      const bw = lipBoundingBox.width * content.cw;
+      const bh = lipBoundingBox.height * content.ch;
 
       // Outer glow
       ctx.shadowColor = '#22c55e';
@@ -97,9 +117,9 @@ const LipMeshOverlay: React.FC<LipMeshOverlayProps> = ({
     }
     
     // ── Draw each landmark point ──
-    landmarks.forEach(landmark => {
-      const x = landmark.x * width;
-      const y = landmark.y * height;
+    landmarks.forEach((landmark) => {
+      const x = normToX(landmark.x);
+      const y = normToY(landmark.y);
       
       let color: string;
       let radius: number;
@@ -151,18 +171,18 @@ const LipMeshOverlay: React.FC<LipMeshOverlayProps> = ({
       
       if (cupidBow && innerTop) {
         ctx.beginPath();
-        ctx.moveTo(cupidBow.x * width, cupidBow.y * height);
-        ctx.lineTo(innerTop.x * width, innerTop.y * height);
+        ctx.moveTo(normToX(cupidBow.x), normToY(cupidBow.y));
+        ctx.lineTo(normToX(innerTop.x), normToY(innerTop.y));
         ctx.stroke();
       }
       if (cupidBow && innerBottom) {
         ctx.beginPath();
-        ctx.moveTo(cupidBow.x * width, cupidBow.y * height);
-        ctx.lineTo(innerBottom.x * width, innerBottom.y * height);
+        ctx.moveTo(normToX(cupidBow.x), normToY(cupidBow.y));
+        ctx.lineTo(normToX(innerBottom.x), normToY(innerBottom.y));
         ctx.stroke();
       }
     }
-  }, [landmarks, width, height, isVisible, lipBoundingBox]);
+  }, [landmarks, width, height, isVisible, lipBoundingBox, imageNaturalWidth, imageNaturalHeight]);
   
   if (!isVisible) return null;
   

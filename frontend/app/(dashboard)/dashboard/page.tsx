@@ -6,6 +6,7 @@ import ConnectionStatus from "@/components/ConnectionStatus";
 import PhonemeTimeline from "@/components/PhonemeTimeline";
 import RecordingControls from "@/components/RecordingControls";
 import TranscriptionPanel from "@/components/TranscriptionPanel";
+import LipReadingPanel from "@/components/LipReadingPanel";
 import type { RecordedFrame } from "@/lib/storage";
 
 interface LipLandmark {
@@ -29,6 +30,15 @@ interface HapticEvent {
   confidence: number;
 }
 
+interface LipReadingEntry {
+  detected_text: string;
+  confidence: number;
+  mouth_state: string;
+  phonemes_detected: string[];
+  analysis_notes: string;
+  timestamp: number;
+}
+
 export default function DashboardPage() {
   const [frameSrc, setFrameSrc] = useState<string | null>(null);
   const [landmarks, setLandmarks] = useState<LipLandmark[]>([]);
@@ -42,10 +52,18 @@ export default function DashboardPage() {
   const [hapticLog, setHapticLog] = useState<HapticEvent[]>([]);
   const [landmarkCount, setLandmarkCount] = useState(0);
   const [isPlayingRecording, setIsPlayingRecording] = useState(false);
-  const [activeTab, setActiveTab] = useState<"overview" | "recording" | "transcription">("overview");
   const [transcript, setTranscript] = useState("");
   const [translation, setTranslation] = useState("");
   const [targetLanguage, setTargetLanguage] = useState("");
+  const [availableLessons, setAvailableLessons] = useState<string[]>([]);
+  const [selectedLesson, setSelectedLesson] = useState("sample_lesson.json");
+  
+  // Lip reading state
+  const [mouthState, setMouthState] = useState("unknown");
+  const [lipReadingResult, setLipReadingResult] = useState<LipReadingEntry | null>(null);
+  const [lipReadingHistory, setLipReadingHistory] = useState<LipReadingEntry[]>([]);
+  const [isLipAnalyzing, setIsLipAnalyzing] = useState(false);
+  
   const wsRef = useRef<WebSocket | null>(null);
 
   const calcMouthOpenness = useCallback((lm: LipLandmark[]) => {
@@ -57,7 +75,10 @@ export default function DashboardPage() {
   
   useEffect(() => {
     setStatus("connecting");
-    const ws = new WebSocket("ws://localhost:8000/ws/viewer");
+    const base =
+      process.env.NEXT_PUBLIC_WS_URL ||
+      (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/^http/, "ws").replace(/\/$/, "");
+    const ws = new WebSocket(`${base.startsWith("ws") ? base : `ws://${base.replace(/^https?:\/\//, "")}`}/ws/viewer`);
     wsRef.current = ws;
     let frames = 0;
     
@@ -74,6 +95,7 @@ export default function DashboardPage() {
       try {
         const data = JSON.parse(event.data);
         
+        // Video frame data
         if (data.frame_base64) {
           const src = data.frame_base64.startsWith('data:') 
             ? data.frame_base64 
@@ -101,8 +123,14 @@ export default function DashboardPage() {
           } else if (!isPlayingRecording) {
             setLipBoundingBox(null);
           }
+          
+          // Mouth state from movement tracking
+          if (data.mouth_state && !isPlayingRecording) {
+            setMouthState(data.mouth_state);
+          }
         }
         
+        // Haptic feedback events
         if (data.type === 'haptic_feedback') {
           setCurrentPhoneme(data.phoneme_type);
           setCurrentHapticPattern(data.pattern || null);
@@ -117,6 +145,23 @@ export default function DashboardPage() {
             setCurrentPhoneme(null);
             setCurrentHapticPattern(null);
           }, duration + 300);
+        }
+        
+        // Lip reading analysis results from Gemini
+        if (data.type === 'lip_reading') {
+          const entry: LipReadingEntry = {
+            detected_text: data.detected_text || "",
+            confidence: data.confidence || 0,
+            mouth_state: data.mouth_state || "unknown",
+            phonemes_detected: data.phonemes_detected || [],
+            analysis_notes: data.analysis_notes || "",
+            timestamp: data.timestamp || Date.now() / 1000,
+          };
+          setLipReadingResult(entry);
+          setIsLipAnalyzing(false);
+          if (entry.detected_text) {
+            setLipReadingHistory(prev => [...prev.slice(-19), entry]);
+          }
         }
       } catch (err) {
         console.error("Error parsing message", err);
@@ -134,7 +179,28 @@ export default function DashboardPage() {
 
   const sendControl = (action: string, payload: Record<string, unknown> = {}) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ type: 'control', action, ...payload }));
+      wsRef.current.send(JSON.stringify({ type: "control", action, ...payload }));
+    }
+  };
+
+  useEffect(() => {
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/lessons`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.lessons?.length) setAvailableLessons(data.lessons);
+      })
+      .catch(() => {});
+  }, []);
+
+  const loadLesson = async () => {
+    try {
+      await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/lessons/load/${selectedLesson}`,
+        { method: "POST" }
+      );
+      sendControl("load_lesson", { lesson_name: selectedLesson });
+    } catch (e) {
+      console.error("Failed to load lesson", e);
     }
   };
 
@@ -157,12 +223,6 @@ export default function DashboardPage() {
   const handlePlaybackStop = useCallback(() => {
     setIsPlayingRecording(false);
   }, []);
-
-  const tabs = [
-    { key: "overview" as const, label: "Overview" },
-    { key: "recording" as const, label: "Record & Replay" },
-    { key: "transcription" as const, label: "Transcribe" },
-  ];
 
   return (
     <div className="flex flex-col h-screen bg-gray-50 text-gray-900">
@@ -209,13 +269,15 @@ export default function DashboardPage() {
                 mouthOpenness={mouthOpenness}
                 currentPhoneme={currentPhoneme}
                 lipBoundingBox={lipBoundingBox}
+                mouthState={mouthState}
+                lipReadingText={lipReadingResult?.detected_text || null}
               />
               <div className="p-3 flex justify-between items-center">
                 <div>
                   <h2 className="font-semibold text-sm text-gray-700">Live Camera Feed</h2>
                   <p className="text-xs text-gray-500">
                     {landmarks.length > 0 
-                      ? `Tracking ${landmarks.length} lip landmarks · Bounding box ${lipBoundingBox ? 'active' : 'inactive'}`
+                      ? `Tracking ${landmarks.length} lip landmarks · Bounding box ${lipBoundingBox ? 'active' : 'inactive'} · ${mouthState}`
                       : 'Waiting for face detection...'}
                   </p>
                 </div>
@@ -248,130 +310,132 @@ export default function DashboardPage() {
             )}
           </div>
           
-          {/* Right column - tabbed */}
-          <div className="space-y-0">
-            {/* Tabs */}
-            <div className="flex bg-white rounded-t-xl border border-b-0 border-gray-200 overflow-hidden">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.key}
-                  onClick={() => setActiveTab(tab.key)}
-                  className={`flex-1 py-3 text-xs font-medium transition-colors ${
-                    activeTab === tab.key
-                      ? "text-indigo-600 bg-indigo-50 border-b-2 border-indigo-500"
-                      : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
+          {/* Right column */}
+          <div className="space-y-6">
+            {/* Lip Reading Panel — NEW */}
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden p-4">
+              <h2 className="font-semibold text-lg mb-3 text-gray-800">👄 Lip Reading AI</h2>
+              <LipReadingPanel
+                latestResult={lipReadingResult}
+                history={lipReadingHistory}
+                isAnalyzing={isLipAnalyzing}
+                mouthState={mouthState}
+              />
             </div>
 
-            <div className="bg-white rounded-b-xl border border-t-0 border-gray-200 shadow-sm">
-              {/* ── Overview Tab ── */}
-              {activeTab === "overview" && (
-                <div className="p-6 space-y-6">
-                  {/* Session Controls */}
-                  <div>
-                    <h2 className="font-semibold text-lg mb-4 text-gray-800">Session Controls</h2>
-                    <div className="space-y-4">
-                      <div className="flex gap-2">
-                        <button onClick={() => sendControl('start_playback')}
-                          className="flex-1 bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                          ▶ Start Lesson
-                        </button>
-                        <button onClick={() => sendControl('pause_playback')}
-                          className="flex-1 bg-yellow-500 hover:bg-yellow-400 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                          ⏸ Pause
-                        </button>
-                        <button onClick={() => sendControl('load_lesson', { lesson_name: 'sample_lesson.json' })}
-                          className="flex-1 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                          📚 Load Lesson
-                        </button>
-                      </div>
-                      <PhonemeTimeline currentPhoneme={currentPhoneme} mouthOpenness={mouthOpenness} />
-                    </div>
-                  </div>
-                  
-                  {/* Haptic Event Log */}
-                  <div>
-                    <h2 className="font-semibold text-lg mb-4 text-gray-800">Haptic Feedback Log</h2>
-                    {hapticLog.length === 0 ? (
-                      <div className="p-4 bg-gray-50 text-gray-400 rounded-lg text-sm text-center">
-                        No haptic events yet. Start a lesson to begin.
-                      </div>
-                    ) : (
-                      <div className="space-y-1 max-h-40 overflow-y-auto">
-                        {hapticLog.slice().reverse().map((evt, i) => (
-                          <div key={i} className="flex items-center justify-between text-xs p-2 bg-gray-50 rounded">
-                            <span className="font-mono font-medium text-gray-700">{evt.phoneme_type}</span>
-                            <span className="text-gray-400">Pattern: [{evt.pattern.join(', ')}]</span>
-                            <span className="text-gray-500">{(evt.confidence * 100).toFixed(0)}%</span>
-                          </div>
-                        ))}
-                      </div>
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+              {/* Session controls */}
+              <div className="p-4 border-b border-gray-200">
+                <h2 className="font-semibold text-lg mb-3 text-gray-800">Session Controls</h2>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  <select
+                    value={selectedLesson}
+                    onChange={(e) => setSelectedLesson(e.target.value)}
+                    className="rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white"
+                  >
+                    {availableLessons.map((l) => (
+                      <option key={l} value={l}>{l.replace(".json", "")}</option>
+                    ))}
+                    {availableLessons.length === 0 && (
+                      <option value="sample_lesson.json">sample_lesson</option>
                     )}
+                  </select>
+                  <button
+                    onClick={loadLesson}
+                    className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium"
+                  >
+                    Load Lesson
+                  </button>
+                  <button
+                    onClick={() => sendControl("start_playback", { start_time: 0 })}
+                    className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-medium"
+                  >
+                    ▶ Start Lesson
+                  </button>
+                  <button
+                    onClick={() => sendControl("pause_playback")}
+                    className="bg-yellow-500 hover:bg-yellow-400 text-white px-4 py-2 rounded-lg text-sm font-medium"
+                  >
+                    ⏸ Pause
+                  </button>
+                  <button
+                    onClick={() =>
+                      fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/haptic/test`, {
+                        method: "POST",
+                      }).catch(() => {})
+                    }
+                    className="bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-lg text-sm font-medium"
+                    title="Send test vibration to connected phones"
+                  >
+                    📳 Test Haptic
+                  </button>
+                </div>
+                <PhonemeTimeline currentPhoneme={currentPhoneme} mouthOpenness={mouthOpenness} />
+              </div>
+
+              {/* Haptic log */}
+              <div className="p-4 border-b border-gray-200">
+                <h2 className="font-semibold text-lg mb-3 text-gray-800">Haptic Feedback Log</h2>
+                {hapticLog.length === 0 ? (
+                  <div className="p-3 bg-gray-50 text-gray-400 rounded-lg text-sm text-center">
+                    No haptic events yet. Start a lesson or use the phone to feel vibrations.
                   </div>
-
-                  {/* Connection Details */}
-                  <div>
-                    <h2 className="font-semibold text-lg mb-4 text-gray-800">Connection Details</h2>
-                    <div className="text-xs font-mono space-y-2 text-gray-600">
-                      <div className="flex justify-between">
-                        <span>WebSocket URL:</span>
-                        <span>ws://localhost:8000/ws/viewer</span>
+                ) : (
+                  <div className="space-y-1 max-h-32 overflow-y-auto">
+                    {hapticLog.slice().reverse().map((evt, i) => (
+                      <div key={i} className="flex items-center justify-between text-xs p-2 bg-gray-50 rounded">
+                        <span className="font-mono font-medium text-gray-700">{evt.phoneme_type}</span>
+                        <span className="text-gray-400">[{evt.pattern?.join(", ")}]</span>
+                        <span className="text-gray-500">{(evt.confidence * 100).toFixed(0)}%</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span>Status:</span>
-                        <span className="uppercase font-semibold">{status}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Landmarks:</span>
-                        <span>{landmarkCount} detected</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Lip BBox:</span>
-                        <span>{lipBoundingBox ? 'Active' : 'None'}</span>
-                      </div>
-                    </div>
+                    ))}
                   </div>
-                </div>
-              )}
+                )}
+              </div>
 
-              {/* ── Recording Tab ── */}
-              {activeTab === "recording" && (
-                <div className="p-4">
-                  <RecordingControls
-                    isLive={status === "connected" && !!frameSrc}
-                    currentFrameSrc={frameSrc}
-                    currentLandmarks={landmarks}
-                    currentBoundingBox={lipBoundingBox}
-                    currentMouthOpenness={mouthOpenness}
-                    currentPhoneme={currentPhoneme}
-                    currentHapticPattern={currentHapticPattern}
-                    onPlaybackFrame={handlePlaybackFrame}
-                    onPlaybackHaptic={handlePlaybackHaptic}
-                    onPlaybackStop={handlePlaybackStop}
-                    transcript={transcript}
-                    translation={translation}
-                    targetLanguage={targetLanguage}
-                  />
+              {/* Connection details */}
+              <div className="p-4 border-b border-gray-200">
+                <h2 className="font-semibold text-sm mb-2 text-gray-700">Connection</h2>
+                <div className="text-xs font-mono space-y-1 text-gray-600">
+                  <div className="flex justify-between"><span>Status</span><span className="uppercase font-semibold">{status}</span></div>
+                  <div className="flex justify-between"><span>Landmarks</span><span>{landmarkCount}</span></div>
+                  <div className="flex justify-between"><span>Lip BBox</span><span>{lipBoundingBox ? "Active" : "None"}</span></div>
+                  <div className="flex justify-between"><span>Mouth State</span><span className="capitalize">{mouthState}</span></div>
                 </div>
-              )}
+              </div>
 
-              {/* ── Transcription Tab ── */}
-              {activeTab === "transcription" && (
-                <div className="p-4">
-                  <TranscriptionPanel
-                    isLive={status === "connected"}
-                    onTranscript={(t) => setTranscript(t)}
-                    onTranslation={(t, lang) => {
-                      setTranslation(t);
-                      setTargetLanguage(lang);
-                    }}
-                  />
-                </div>
-              )}
+              {/* Record & Replay */}
+              <div className="p-4 border-b border-gray-200">
+                <h2 className="font-semibold text-lg mb-3 text-gray-800">Record & Replay</h2>
+                <RecordingControls
+                  isLive={status === "connected" && !!frameSrc}
+                  currentFrameSrc={frameSrc}
+                  currentLandmarks={landmarks}
+                  currentBoundingBox={lipBoundingBox}
+                  currentMouthOpenness={mouthOpenness}
+                  currentPhoneme={currentPhoneme}
+                  currentHapticPattern={currentHapticPattern}
+                  onPlaybackFrame={handlePlaybackFrame}
+                  onPlaybackHaptic={handlePlaybackHaptic}
+                  onPlaybackStop={handlePlaybackStop}
+                  transcript={transcript}
+                  translation={translation}
+                  targetLanguage={targetLanguage}
+                />
+              </div>
+
+              {/* Transcribe */}
+              <div className="p-4">
+                <h2 className="font-semibold text-lg mb-3 text-gray-800">Transcribe</h2>
+                <TranscriptionPanel
+                  isLive={status === "connected"}
+                  onTranscript={(t) => setTranscript(t)}
+                  onTranslation={(t, lang) => {
+                    setTranslation(t);
+                    setTargetLanguage(lang);
+                  }}
+                />
+              </div>
             </div>
           </div>
         </div>

@@ -1,5 +1,6 @@
 import os
 import json
+import time
 from typing import List, Dict, Any, Optional
 from fastapi import WebSocket, WebSocketDisconnect
 
@@ -88,24 +89,40 @@ class HapticEventManager:
         """Get haptic pattern for a phoneme type."""
         return self.haptic_patterns.get(phoneme_type, [100])
     
-    async def trigger_haptic(self, viewer_manager: ViewerManager, phoneme_type: str, confidence: float = 1.0):
-        """Trigger haptic feedback to all connected devices."""
+    async def trigger_haptic(
+        self,
+        viewer_manager: ViewerManager,
+        phoneme_type: str,
+        confidence: float = 1.0,
+        connection_manager: Optional["ConnectionManager"] = None,
+    ):
+        """Trigger haptic feedback to dashboard viewers and to phones (camera sources)."""
         pattern = self.get_pattern(phoneme_type)
         
         # Scale pattern based on confidence
         if confidence < 0.7:
-            # Reduce intensity for low confidence
             pattern = [int(p * 0.5) for p in pattern]
         
         haptic_event = {
-            'type': 'haptic_feedback',
-            'pattern': pattern,
-            'phoneme_type': phoneme_type,
-            'confidence': confidence,
-            'timestamp': os.time() if hasattr(os, 'time') else 0
+            "type": "haptic_feedback",
+            "pattern": pattern,
+            "phoneme_type": phoneme_type,
+            "confidence": confidence,
+            "timestamp": time.time(),
         }
         
         await viewer_manager.broadcast(haptic_event)
+        # Also send to phones so they can vibrate (Phase 1: "Haptic Remote")
+        if connection_manager and connection_manager.active_connections:
+            disconnected = []
+            for ws in connection_manager.active_connections:
+                try:
+                    await ws.send_json(haptic_event)
+                except Exception as e:
+                    print(f"Error sending haptic to phone: {e}")
+                    disconnected.append(ws)
+            for ws in disconnected:
+                connection_manager.disconnect(ws)
 
 
 class SpeechAnalysisManager:

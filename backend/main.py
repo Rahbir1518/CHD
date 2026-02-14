@@ -14,9 +14,11 @@ import json
 from websocket_server import manager, viewer_manager, haptic_manager, speech_manager
 from mediapipe_processor import MediaPipeProcessor
 from phoneme_engine import phoneme_engine, load_lesson
+from lip_reading import lip_reader
 
-load_dotenv()
-
+# Load .env from backend directory so GEMINI_API_KEY is found
+_load_env = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+load_dotenv(_load_env)
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
 app = FastAPI(
@@ -40,7 +42,9 @@ media_processor = MediaPipeProcessor()
 # Set up callbacks for phoneme engine
 phoneme_engine.set_haptic_callback(
     lambda phoneme: asyncio.create_task(
-        haptic_manager.trigger_haptic(viewer_manager, phoneme.type, phoneme.confidence)
+        haptic_manager.trigger_haptic(
+            viewer_manager, phoneme.type, phoneme.confidence, connection_manager=manager
+        )
     )
 )
 
@@ -138,6 +142,15 @@ async def stop_playback():
     phoneme_engine.stop_playback()
     return {"message": "Playback stopped"}
 
+
+@app.post("/haptic/test")
+async def test_haptic():
+    """Send a test haptic pattern to all connected phones and viewers (Phase 1: Haptic Remote)."""
+    await haptic_manager.trigger_haptic(
+        viewer_manager, "buzz", 1.0, connection_manager=manager
+    )
+    return {"message": "Test haptic sent", "pattern": haptic_manager.get_pattern("buzz")}
+
 @app.get("/playback/status")
 async def playback_status():
     """Get current playback status."""
@@ -147,7 +160,9 @@ async def playback_status():
 async def websocket_video(websocket: WebSocket):
     """
     Endpoint for the PHONE (camera source).
-    Receives base64 frames, processes with MediaPipe, and relays to dashboard viewers.
+    Receives base64 frames, processes with MediaPipe, draws bounding boxes,
+    feeds lip frames into the LipReadingEngine, and relays to dashboard viewers.
+    Also sends the processed (annotated) frame back to the phone for display.
     """
     await manager.connect(websocket)
     try:
@@ -157,22 +172,24 @@ async def websocket_video(websocket: WebSocket):
             data = await websocket.receive_text()
             frame_count += 1
             
-            print(f"Received frame {frame_count}")
+            if frame_count <= 3 or frame_count % 120 == 0:
+                print(f"Received frame {frame_count}")
             
             # Try to parse as JSON first
             try:
                 json_data = json.loads(data)
                 frame_data = json_data.get('frame_base64', data)
-                print(f"Parsed JSON frame, length: {len(frame_data) if isinstance(frame_data, str) else 'N/A'}")
             except json.JSONDecodeError:
                 frame_data = data
-                print(f"Raw frame data, length: {len(frame_data)}")
             
-            # Process frame with MediaPipe
+            # Process frame with MediaPipe (extracts landmarks + draws bounding box)
             processed_data = media_processor.process_frame(frame_data)
+            if frame_count <= 3 or frame_count % 120 == 0:
+                n_land = processed_data.get("landmark_count", 0)
+                err = processed_data.get("error", "")
+                print(f"Frame {frame_count}: landmarks={n_land} err={err or 'ok'}")
             
-            if 'error' in processed_data:
-                print(f"Frame processing error: {processed_data['error']}")
+            if "error" in processed_data:
                 # Still broadcast the original frame even if processing failed
                 payload = {
                     'frame_base64': frame_data,
@@ -182,22 +199,83 @@ async def websocket_video(websocket: WebSocket):
                     'processing_error': processed_data['error']
                 }
                 await viewer_manager.broadcast(payload)
+                # Send back to phone too so it can display errors
+                try:
+                    await websocket.send_json({"type": "processed_frame", **payload})
+                except Exception:
+                    pass
                 continue
+            
+            # ── Mouth movement tracking ──
+            openness = 0.0
+            landmarks = processed_data.get('landmarks', [])
+            top = next((l for l in landmarks if l.get('index') == 13), None)
+            bottom = next((l for l in landmarks if l.get('index') == 14), None)
+            if top and bottom:
+                openness = abs(bottom['y'] - top['y'])
+            
+            mouth_info = lip_reader.update_mouth_state(openness)
+            processed_data['mouth_state'] = mouth_info['mouth_state']
+            processed_data['mouth_openness'] = mouth_info['openness']
+            processed_data['mouth_velocity'] = mouth_info['velocity']
+            
+            # ── Feed frames into lip reading buffer ──
+            lip_bbox = processed_data.get('lip_bounding_box')
+            if lip_bbox and processed_data.get('frame_base64'):
+                cropped = lip_reader.crop_lip_region(
+                    processed_data['frame_base64'], lip_bbox
+                )
+                lip_reader.add_frame(cropped)
+            
+            # ── Trigger Gemini lip reading if ready ──
+            if lip_reader.should_analyze():
+                # Fire and forget — don't block the video stream
+                asyncio.create_task(_run_lip_analysis())
             
             # Add timestamp
             processed_data['timestamp'] = time.time()
             processed_data['frame_number'] = frame_count
             
-            print(f"Broadcasting frame {frame_count} with {processed_data.get('landmark_count', 0)} landmarks")
-            
             # Broadcast to all dashboards
             await viewer_manager.broadcast(processed_data)
+            
+            # ── Send processed frame back to phone for bounding box display ──
+            try:
+                await websocket.send_json({
+                    "type": "processed_frame",
+                    "frame_base64": processed_data.get('frame_base64', ''),
+                    "landmarks": processed_data.get('landmarks', []),
+                    "lip_bounding_box": lip_bbox,
+                    "mouth_state": mouth_info['mouth_state'],
+                })
+            except Exception:
+                pass
             
     except WebSocketDisconnect:
         manager.disconnect(websocket)
     except Exception as e:
         print(f"Error in video socket: {e}")
         manager.disconnect(websocket)
+
+
+async def _run_lip_analysis():
+    """Background task: run Gemini lip reading and broadcast result."""
+    try:
+        result = await lip_reader.analyze_frames()
+        if result and result.detected_text:
+            event = {
+                "type": "lip_reading",
+                "detected_text": result.detected_text,
+                "confidence": result.confidence,
+                "mouth_state": result.mouth_state,
+                "phonemes_detected": result.phonemes_detected,
+                "analysis_notes": result.analysis_notes,
+                "timestamp": result.timestamp,
+            }
+            await viewer_manager.broadcast(event)
+            print(f"👄 Lip reading: '{result.detected_text}' ({result.confidence:.0%})")
+    except Exception as e:
+        print(f"Lip analysis background error: {e}")
 
 @app.websocket("/ws/viewer")
 async def websocket_viewer(websocket: WebSocket):
@@ -217,7 +295,8 @@ async def websocket_viewer(websocket: WebSocket):
                     action = data.get('action')
                     if action == 'load_lesson':
                         lesson_name = data.get('lesson_name', 'sample_lesson.json')
-                        load_lesson(os.path.join('lessons', lesson_name))
+                        lesson_path = os.path.join(os.path.dirname(__file__), 'lessons', lesson_name)
+                        load_lesson(lesson_path)
                     elif action == 'start_playback':
                         start_time = data.get('start_time', 0.0)
                         phoneme_engine.start_playback(start_time)
@@ -255,6 +334,43 @@ async def startup_event():
         print("Default lesson loaded")
 
 
+# ── Lip Reading Endpoint ────────────────────────────────────────────────────
+
+@app.post("/api/lip-read")
+async def lip_read_frame(request: Request):
+    """
+    On-demand lip reading analysis.
+    Accepts JSON with { frame_base64: string }
+    Returns detected text, confidence, mouth state, etc.
+    """
+    data = await request.json()
+    frame_b64 = data.get("frame_base64", "")
+
+    if not frame_b64:
+        return JSONResponse(status_code=400, content={"error": "No frame data provided"})
+
+    # Optionally crop to lip region first
+    lip_bbox = data.get("lip_bounding_box")
+    if lip_bbox:
+        frame_b64 = lip_reader.crop_lip_region(frame_b64, lip_bbox)
+
+    result = await lip_reader.analyze_single_frame(frame_b64)
+    return {
+        "detected_text": result.detected_text,
+        "confidence": result.confidence,
+        "mouth_state": result.mouth_state,
+        "phonemes_detected": result.phonemes_detected,
+        "analysis_notes": result.analysis_notes,
+        "timestamp": result.timestamp,
+    }
+
+
+@app.get("/api/lip-read/history")
+async def lip_read_history():
+    """Get recent lip reading analysis history."""
+    return {"history": lip_reader.get_history(20)}
+
+
 # ── Gemini Transcription & Translation ──────────────────────────────────────
 
 @app.post("/api/transcribe")
@@ -273,42 +389,36 @@ async def transcribe_audio(request: Request):
     if not audio_b64:
         return JSONResponse(status_code=400, content={"error": "No audio data provided"})
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
+    # Gemini 1.5 Flash supports audio input; 2.0 may have different endpoint
+    model = "gemini-1.5-flash"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}"
 
     payload = {
         "contents": [
             {
                 "parts": [
-                    {
-                        "inline_data": {
-                            "mime_type": mime_type,
-                            "data": audio_b64
-                        }
-                    },
-                    {
-                        "text": "Transcribe this audio exactly. Return ONLY the transcribed text, nothing else. If the audio is silent or unclear, return an empty string."
-                    }
+                    {"inline_data": {"mime_type": mime_type, "data": audio_b64}},
+                    {"text": "Transcribe this audio exactly. Return ONLY the transcribed text, nothing else. If the audio is silent or unclear, return an empty string."},
                 ]
             }
         ],
-        "generationConfig": {
-            "temperature": 0.1,
-            "maxOutputTokens": 1024
-        }
+        "generationConfig": {"temperature": 0.1, "maxOutputTokens": 1024},
     }
 
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             resp = await client.post(url, json=payload)
-            resp.raise_for_status()
-            result = resp.json()
+            body = resp.json() if resp.content else {}
+            if not resp.is_success:
+                err_msg = body.get("error", {}).get("message", resp.text) or resp.text
+                print(f"Gemini transcription API error: {err_msg}")
+                return JSONResponse(status_code=resp.status_code, content={"error": err_msg})
 
         transcript = ""
-        if "candidates" in result and result["candidates"]:
-            parts = result["candidates"][0].get("content", {}).get("parts", [])
+        if "candidates" in body and body["candidates"]:
+            parts = body["candidates"][0].get("content", {}).get("parts", [])
             if parts:
-                transcript = parts[0].get("text", "").strip()
-
+                transcript = (parts[0].get("text") or "").strip()
         return {"transcript": transcript}
     except Exception as e:
         print(f"Gemini transcription error: {e}")
@@ -331,7 +441,8 @@ async def translate_text(request: Request):
     if not text:
         return JSONResponse(status_code=400, content={"error": "No text provided"})
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
+    model = "gemini-1.5-flash"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}"
 
     payload = {
         "contents": [

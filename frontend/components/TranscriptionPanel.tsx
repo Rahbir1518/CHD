@@ -152,18 +152,24 @@ export default function TranscriptionPanel({
   const transcribeAudio = useCallback(
     async (audioBase64: string, mimeType: string) => {
       try {
-        const resp = await fetch("http://localhost:8000/api/transcribe", {
+        setError(null);
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+        const resp = await fetch(`${apiUrl}/api/transcribe`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             audio_base64: audioBase64,
-            mime_type: mimeType,
+            mime_type: mimeType || "audio/webm",
           }),
         });
-        const data = await resp.json();
+        const data = await resp.json().catch(() => ({}));
 
-        if (data.transcript) {
-          const newText = data.transcript.trim();
+        if (!resp.ok) {
+          setError(data?.error || `Transcription failed (${resp.status})`);
+          return;
+        }
+        if (data.transcript !== undefined) {
+          const newText = String(data.transcript).trim();
           if (newText) {
             setTranscript((prev) => {
               const updated = prev ? `${prev} ${newText}` : newText;
@@ -171,15 +177,12 @@ export default function TranscriptionPanel({
               return updated;
             });
             setInterimTranscript("");
-
-            // Auto-translate
-            if (autoTranslate) {
-              translateText(newText);
-            }
+            if (autoTranslate) translateText(newText);
           }
         }
       } catch (err) {
         console.error("Transcription error:", err);
+        setError(err instanceof Error ? err.message : "Transcription request failed");
       }
     },
     [autoTranslate, onTranscript]
@@ -192,7 +195,8 @@ export default function TranscriptionPanel({
 
       setIsTranslating(true);
       try {
-        const resp = await fetch("http://localhost:8000/api/translate", {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+        const resp = await fetch(`${apiUrl}/api/translate`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

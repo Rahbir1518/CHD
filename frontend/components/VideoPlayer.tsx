@@ -1,5 +1,5 @@
 
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from "react";
 import LipMeshOverlay from './LipMeshOverlay';
 
 interface LipLandmark {
@@ -24,7 +24,15 @@ interface VideoPlayerProps {
   mouthOpenness?: number;
   currentPhoneme?: string | null;
   lipBoundingBox?: LipBoundingBox | null;
+  mouthState?: string;
+  lipReadingText?: string | null;
 }
+
+const MOUTH_STATE_EMOJI: Record<string, string> = {
+  closed: "😶",
+  open: "😮",
+  talking: "🗣️",
+};
 
 const VideoPlayer: React.FC<VideoPlayerProps> = ({ 
   frameSrc, 
@@ -33,10 +41,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   showOverlay = true,
   mouthOpenness,
   currentPhoneme,
-  lipBoundingBox = null
+  lipBoundingBox = null,
+  mouthState = "unknown",
+  lipReadingText = null,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 640, height: 480 });
+  const [imageNatural, setImageNatural] = useState<{ width: number; height: number } | null>(null);
 
   // Track container dimensions for overlay sizing
   useEffect(() => {
@@ -46,11 +57,23 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         setDimensions({ width: rect.width, height: rect.height });
       }
     };
-
     updateDimensions();
     const observer = new ResizeObserver(updateDimensions);
     if (containerRef.current) observer.observe(containerRef.current);
     return () => observer.disconnect();
+  }, []);
+
+  const onImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget;
+    if (img.naturalWidth && img.naturalHeight) {
+      setImageNatural({ width: img.naturalWidth, height: img.naturalHeight });
+    } else {
+      setImageNatural(null);
+    }
+  }, []);
+
+  const onImageErrorOrNewSrc = useCallback(() => {
+    setImageNatural(null);
   }, []);
 
   return (
@@ -60,12 +83,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     >
       {frameSrc ? (
         <>
-          <img 
-            src={frameSrc} 
-            alt="Live Stream" 
+          <img
+            src={frameSrc}
+            alt="Live Stream"
             className="w-full h-full object-contain"
+            onLoad={onImageLoad}
+            onError={onImageErrorOrNewSrc}
           />
-          {/* Lip landmark overlay */}
           {showOverlay && (
             <LipMeshOverlay
               landmarks={landmarks}
@@ -73,6 +97,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               height={dimensions.height}
               isVisible={true}
               lipBoundingBox={lipBoundingBox}
+              imageNaturalWidth={imageNatural?.width}
+              imageNaturalHeight={imageNatural?.height}
             />
           )}
         </>
@@ -88,7 +114,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         </div>
       )}
       
-      {/* Overlay info */}
+      {/* Top-right status badges */}
       <div className="absolute top-2 right-2 flex items-center gap-2">
         <div className="bg-black/50 px-2 py-1 rounded text-xs text-white backdrop-blur-sm">
           Live Feed
@@ -98,9 +124,21 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             🎯 Tracking
           </div>
         )}
+        {mouthState !== "unknown" && (
+          <div className="bg-black/50 px-2 py-1 rounded text-xs text-white backdrop-blur-sm">
+            {MOUTH_STATE_EMOJI[mouthState] || ""} <span className="capitalize">{mouthState}</span>
+          </div>
+        )}
       </div>
 
-      {/* Mouth openness + current phoneme HUD */}
+      {/* Lip reading text overlay at top-center */}
+      {lipReadingText && (
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-indigo-600/80 px-4 py-2 rounded-lg text-sm text-white font-medium backdrop-blur-sm max-w-[80%] text-center shadow-lg animate-in fade-in">
+          👄 &ldquo;{lipReadingText}&rdquo;
+        </div>
+      )}
+
+      {/* Bottom-right HUD: mouth openness + phoneme */}
       {(mouthOpenness !== undefined || currentPhoneme) && (
         <div className="absolute bottom-2 right-2 bg-black/60 px-3 py-2 rounded-lg text-xs text-white backdrop-blur-sm space-y-1">
           {mouthOpenness !== undefined && (

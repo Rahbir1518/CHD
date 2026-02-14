@@ -25,56 +25,68 @@ class MediaPipeProcessor:
     ALL_LIP_LANDMARKS = list(set(LIP_LANDMARKS + OUTER_LIP_LANDMARKS + INNER_LIP_LANDMARKS))
     
     def __init__(self):
-        """Initialize MediaPipe Face Mesh detector."""
+        """Initialize MediaPipe Face Mesh detector using the tasks API."""
+        self.use_new_api = True
+        self.face_landmarker = None
+        
+        import os
+        # Ensure we have an absolute path to the model file
+        dir_path = os.path.dirname(os.path.abspath(__file__))
+        model_path = os.path.join(dir_path, "face_landmarker.task")
+        
         try:
-            # Try the new API first
-            self.BaseOptions = mp.tasks.BaseOptions
-            self.FaceLandmarker = mp.tasks.vision.FaceLandmarker
-            self.FaceLandmarkerOptions = mp.tasks.vision.FaceLandmarkerOptions
-            self.VisionRunningMode = mp.tasks.vision.RunningMode
-            
-            # Create FaceLandmarker instance
-            options = self.FaceLandmarkerOptions(
-                base_options=self.BaseOptions(),
-                running_mode=self.VisionRunningMode.IMAGE,
-                num_faces=1,
-                min_face_detection_confidence=0.5,
-                min_face_presence_confidence=0.5,
-                min_tracking_confidence=0.5
-            )
-            
-            self.face_landmarker = self.FaceLandmarker.create_from_options(options)
-            self.use_new_api = True
+            if not os.path.exists(model_path):
+                print(f"MediaPipe model not found at {model_path}")
+                # Try relative as fallback
+                model_path = "face_landmarker.task"
+                if not os.path.exists(model_path):
+                    self.use_new_api = False
+                    return
+
+            try:
+                # Standard initialization with options
+                BaseOptions = mp.tasks.BaseOptions
+                FaceLandmarker = mp.tasks.vision.FaceLandmarker
+                FaceLandmarkerOptions = mp.tasks.vision.FaceLandmarkerOptions
+                VisionRunningMode = mp.tasks.vision.RunningMode
+
+                options = FaceLandmarkerOptions(
+                    base_options=BaseOptions(model_asset_path=model_path),
+                    running_mode=VisionRunningMode.IMAGE,
+                    num_faces=1,
+                    min_face_detection_confidence=0.5,
+                    min_face_presence_confidence=0.5,
+                    min_tracking_confidence=0.5,
+                )
+                self.face_landmarker = FaceLandmarker.create_from_options(options)
+                print(f"MediaPipe: initialized with options using {model_path}")
+            except Exception as e:
+                print(f"MediaPipe options init failed: {e}. Trying simple model_path...")
+                # Fallback to high-level API if options fail (verified working in debug)
+                self.face_landmarker = mp.tasks.vision.FaceLandmarker.create_from_model_path(model_path)
+                print(f"MediaPipe: initialized with model_path using {model_path}")
             
         except Exception as e:
-            print(f"New API failed: {e}, falling back to legacy API")
-            # Fallback to legacy API
-            try:
-                self.mp_face_mesh = mp.solutions.face_mesh
-                self.face_mesh = self.mp_face_mesh.FaceMesh(
-                    static_image_mode=True,
-                    max_num_faces=1,
-                    refine_landmarks=True,
-                    min_detection_confidence=0.5
-                )
-                self.use_new_api = False
-            except Exception as e2:
-                print(f"Legacy API also failed: {e2}")
-                # Create dummy processor that returns empty landmarks
-                self.use_new_api = None
-                print("MediaPipe initialization failed, using dummy processor")
+            print(f"MediaPipe initialization failed completely: {e}")
+            self.use_new_api = False
     
     def decode_frame(self, frame_data: str) -> Optional[np.ndarray]:
         """Decode base64 frame data to OpenCV image."""
         try:
-            # Remove data URL prefix if present
-            if frame_data.startswith('data:image'):
-                frame_data = frame_data.split(',')[1]
-            
-            # Decode base64
-            frame_bytes = base64.b64decode(frame_data)
+            if not frame_data or not isinstance(frame_data, str):
+                return None
+            # Remove data URL prefix if present (phone sends data:image/jpeg;base64,...)
+            s = frame_data.strip()
+            if s.startswith("data:image"):
+                if "," in s:
+                    s = s.split(",", 1)[1]
+                else:
+                    return None
+            frame_bytes = base64.b64decode(s)
             frame_array = np.frombuffer(frame_bytes, dtype=np.uint8)
             frame = cv2.imdecode(frame_array, cv2.IMREAD_COLOR)
+            if frame is None or frame.size == 0:
+                return None
             return frame
         except Exception as e:
             print(f"Error decoding frame: {e}")
@@ -100,53 +112,34 @@ class MediaPipeProcessor:
         if self.use_new_api is None:
             return key_landmarks, all_landmarks, bounding_box
         
+        # Ensure contiguous uint8 RGB for MediaPipe
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        rgb_frame = np.ascontiguousarray(rgb_frame)
         
         try:
-            if self.use_new_api:
-                mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
-                face_landmarker_result = self.face_landmarker.detect(mp_image)
+            mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
+            face_landmarker_result = self.face_landmarker.detect(mp_image)
+            
+            if face_landmarker_result.face_landmarks:
+                face_landmarks = face_landmarker_result.face_landmarks[0]
                 
-                if face_landmarker_result.face_landmarks:
-                    face_landmarks = face_landmarker_result.face_landmarks[0]
-                    
-                    # Key landmarks
-                    for idx in self.LIP_LANDMARKS:
-                        if idx < len(face_landmarks):
-                            landmark = face_landmarks[idx]
-                            key_landmarks.append({
-                                'x': landmark.x, 'y': landmark.y,
-                                'z': landmark.z, 'index': idx
-                            })
-                    
-                    # All lip landmarks for bounding box
-                    for idx in self.ALL_LIP_LANDMARKS:
-                        if idx < len(face_landmarks):
-                            landmark = face_landmarks[idx]
-                            all_landmarks.append({
-                                'x': landmark.x, 'y': landmark.y,
-                                'z': landmark.z, 'index': idx
-                            })
-            else:
-                results = self.face_mesh.process(rgb_frame)
+                # Key landmarks
+                for idx in self.LIP_LANDMARKS:
+                    if idx < len(face_landmarks):
+                        landmark = face_landmarks[idx]
+                        key_landmarks.append({
+                            'x': landmark.x, 'y': landmark.y,
+                            'z': landmark.z, 'index': idx
+                        })
                 
-                if results.multi_face_landmarks:
-                    for face_landmarks in results.multi_face_landmarks:
-                        for idx in self.LIP_LANDMARKS:
-                            if idx < len(face_landmarks.landmark):
-                                landmark = face_landmarks.landmark[idx]
-                                key_landmarks.append({
-                                    'x': landmark.x, 'y': landmark.y,
-                                    'z': landmark.z, 'index': idx
-                                })
-                        
-                        for idx in self.ALL_LIP_LANDMARKS:
-                            if idx < len(face_landmarks.landmark):
-                                landmark = face_landmarks.landmark[idx]
-                                all_landmarks.append({
-                                    'x': landmark.x, 'y': landmark.y,
-                                    'z': landmark.z, 'index': idx
-                                })
+                # All lip landmarks for bounding box
+                for idx in self.ALL_LIP_LANDMARKS:
+                    if idx < len(face_landmarks):
+                        landmark = face_landmarks[idx]
+                        all_landmarks.append({
+                            'x': landmark.x, 'y': landmark.y,
+                            'z': landmark.z, 'index': idx
+                        })
         except Exception as e:
             print(f"Error in face landmark detection: {e}")
         

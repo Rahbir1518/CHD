@@ -278,6 +278,9 @@ export default function RecordingControls({
             Recording... {framesRef.current.length} frames captured
           </div>
         )}
+        <p className="text-xs text-gray-500 mt-2">
+          Records video + overlay. Use <strong>Transcribe</strong> below and click &quot;Start Listening&quot; to capture voice; transcript is saved with this recording when you stop.
+        </p>
       </div>
 
       {/* Playback Controls (visible during playback) */}
