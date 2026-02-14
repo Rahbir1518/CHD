@@ -7,6 +7,7 @@ import PhonemeTimeline from "@/components/PhonemeTimeline";
 import RecordingControls from "@/components/RecordingControls";
 import TranscriptionPanel from "@/components/TranscriptionPanel";
 import LipReadingPanel from "@/components/LipReadingPanel";
+import PitchAnalysisPanel from "@/components/PitchAnalysisPanel";
 import type { RecordedFrame } from "@/lib/storage";
 
 interface LipLandmark {
@@ -308,6 +309,9 @@ export default function DashboardPage() {
                 )}
               </div>
             )}
+
+            {/* Real-Time Pitch Analysis Audiogram */}
+            <PitchAnalysisPanel />
           </div>
           
           {/* Right column */}
