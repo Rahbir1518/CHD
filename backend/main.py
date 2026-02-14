@@ -491,10 +491,10 @@ if __name__ == "__main__":
     use_https = os.getenv("BACKEND_HTTPS", "true").lower() == "true" and os.path.exists(_key_file) and os.path.exists(_cert_file)
     protocol = "https" if use_https else "http"
     ws_protocol = "wss" if use_https else "ws"
-    print(f"🚀 Starting HapticPhonix server on 0.0.0.0:{port} ({protocol.upper()})")
-    print(f"📱 Video endpoint: {ws_protocol}://localhost:{port}/ws/video")
-    print(f"👁️  Viewer endpoint: {ws_protocol}://localhost:{port}/ws/viewer")
-    print(f"📚 Lessons endpoint: {protocol}://localhost:{port}/lessons")
+    print(f"Starting HapticPhonix server on 0.0.0.0:{port} ({protocol.upper()})")
+    print(f"Video endpoint: {ws_protocol}://localhost:{port}/ws/video")
+    print(f"Viewer endpoint: {ws_protocol}://localhost:{port}/ws/viewer")
+    print(f"Lessons endpoint: {protocol}://localhost:{port}/lessons")
     if use_https:
         uvicorn.run(app, host="0.0.0.0", port=port, ssl_keyfile=_key_file, ssl_certfile=_cert_file)
     else:
