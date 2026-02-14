@@ -1,22 +1,23 @@
-import React from 'react'
-import Link from "next/link"
-const page = () => {
+import { auth } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
+
+export default async function Home() {
+  const { userId } = await auth();
+
+  // If user is signed in, redirect to dashboard
+  if (userId) {
+    redirect("/dashboard");
+  }
+
   return (
-    <div>
-      <Link href="/signIn">
-          <button style={{ padding: '10px 20px', cursor: 'pointer' }} className='bg-red-600'>
-            Sign In
-          </button>
-      </Link>
-
-      <Link href="/signUp">
-          <button style={{ padding: '10px 20px', cursor: 'pointer' }} className='bg-blue-600'>
-            Sign Up
-          </button>
-      </Link>
-
+    <div className="flex flex-col items-center justify-center min-h-screen gap-6">
+      <h1 className="text-4xl font-bold">Welcome to CHD</h1>
+      <p className="text-lg text-gray-600">
+        Please sign in or sign up to continue.
+      </p>
+      <p className="text-sm text-gray-500">
+        Use the buttons in the header to get started.
+      </p>
     </div>
-  )
+  );
 }
-
-export default page
