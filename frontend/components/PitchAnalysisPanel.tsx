@@ -1,8 +1,10 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { usePitchAnalysis } from '@/hooks/usePitchAnalysis';
+import { useLaryngealHaptics } from '@/hooks/useLaryngealHaptics';
 import Audiogram from '@/components/Audiogram';
+import LaryngealHapticsPanel from '@/components/LaryngealHapticsPanel';
 import type { PitchFrame } from '@/lib/pitchAnalysis';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -91,6 +93,31 @@ const PitchAnalysisPanel: React.FC = () => {
     stabilityWindow: 30,
     yinThreshold: 0.15,
   });
+
+  // Laryngeal haptic feedback — driven by pitch analysis
+  const haptics = useLaryngealHaptics({
+    minPitch: 80,
+    maxPitch: 400,
+    updateIntervalMs: 50,
+    smoothingAlpha: 0.35,
+    pulsesPerBatch: 4,
+  });
+
+  // Feed every pitch frame into the haptic engine
+  useEffect(() => {
+    if (currentFrame && isActive) {
+      haptics.feed(currentFrame);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentFrame, isActive]);
+
+  // Stop haptics when analysis stops
+  useEffect(() => {
+    if (!isActive) {
+      haptics.stop();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isActive]);
 
   const [showMode, setShowMode] = useState<'combined' | 'pitch' | 'energy'>('combined');
 
@@ -225,6 +252,18 @@ const PitchAnalysisPanel: React.FC = () => {
           minFreq={50}
           maxFreq={500}
           mode={showMode}
+        />
+      </div>
+
+      {/* ── Laryngeal Haptic Feedback ───────────────────────────────────── */}
+      <div className="px-4 pb-3">
+        <LaryngealHapticsPanel
+          state={haptics.state}
+          enabled={haptics.enabled}
+          onToggleEnabled={haptics.setEnabled}
+          onPlayTest={haptics.playTest}
+          isSupported={haptics.isSupported}
+          isAnalysisActive={isActive}
         />
       </div>
 

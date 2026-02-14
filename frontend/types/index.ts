@@ -4,6 +4,10 @@
 
 export type { PitchFrame, PitchAnalysisConfig } from '@/lib/pitchAnalysis';
 
+// ── Haptic Feedback Types ────────────────────────────────────────────────────
+
+export type { HapticConfig, HapticState } from '@/lib/laryngealHaptics';
+
 /** A single entry in the pitch history audiogram */
 export interface PitchHistoryEntry {
   pitch: number;
