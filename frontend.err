@@ -1,0 +1,3 @@
+⚠ Self-signed certificates are currently an experimental feature, use with caution.
+⚠ Port 3000 is in use by process 34348, using available port 3001 instead.
+⨯ Unable to acquire lock at C:\CHD\CHD\frontend\.next\dev\lock, is another instance of next dev running?

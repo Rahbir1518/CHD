@@ -1,0 +1,2 @@
+NAME=frontend URL=https://nonfashionably-sartorial-marry.ngrok-free.dev ADDR=http://localhost:3000
+NAME=backend URL=https://nonfashionably-sartorial-marry.ngrok-free.dev ADDR=http://localhost:8000

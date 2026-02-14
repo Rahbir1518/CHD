@@ -85,11 +85,27 @@ const DEFAULT_CONFIG: Required<HapticConfig> = {
   pulsesPerBatch: 4,
   updateIntervalMs: 50,
   smoothingAlpha: 0.35,
-  silenceThreshold: 0.015,
+  silenceThreshold: 0.008,
   enabled: true,
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * Check if the Vibration API is safe to use.
+ * Apple iOS does not support it; calling navigator.vibrate() on iPhone can freeze the app.
+ * Always use this before calling navigator.vibrate().
+ */
+export function isVibrationSupported(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  // Do NOT require isSecureContext here: after "Proceed anyway" (invalid cert) the
+  // context is insecure but we still want to try vibrate() — it often works on Android.
+  if (!('vibrate' in navigator) || typeof navigator.vibrate !== 'function') return false;
+  // iOS does not support the Vibration API; calling it can freeze the app
+  if (/iPad|iPhone|iPod/.test(navigator.userAgent)) return false;
+  if (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) return false; // iPad on iOS 13+
+  return true;
+}
 
 /** Clamp a value between min and max */
 function clamp(value: number, min: number, max: number): number {
@@ -248,9 +264,9 @@ export class LaryngealHapticEngine {
     }
   }
 
-  /** Check if vibration API is available */
+  /** Check if vibration API is available and safe to use (excludes iOS) */
   static isSupported(): boolean {
-    return typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
+    return isVibrationSupported();
   }
 
   // ── Private ────────────────────────────────────────────────────────────

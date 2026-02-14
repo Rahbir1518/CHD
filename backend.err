@@ -1,0 +1,28 @@
+2026-02-14 13:24:46.356880: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+2026-02-14 13:24:49.314466: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+W0000 00:00:1771093491.306631    9156 face_landmarker_graph.cc:180] Sets FaceBlendshapesGraph acceleration to xnnpack by default.
+INFO: Created TensorFlow Lite XNNPACK delegate for CPU.
+W0000 00:00:1771093491.327527   22736 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.
+W0000 00:00:1771093491.341450   29712 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.
+C:\CHD\CHD\backend\main.py:326: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("startup")
+Traceback (most recent call last):
+  File "C:\CHD\CHD\backend\main.py", line 494, in <module>
+    print(f"\U0001f680 Starting HapticPhonix server on 0.0.0.0:{port} ({protocol.upper()})")
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rahbi\AppData\Local\Programs\Python\Python313\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\U0001f680' in position 0: character maps to <undefined>
+Exception ignored in: <function FaceLandmarker.__del__ at 0x00000273A61DE8E0>
+Traceback (most recent call last):
+  File "C:\Users\rahbi\AppData\Local\Programs\Python\Python313\Lib\site-packages\mediapipe\tasks\python\vision\face_landmarker.py", line 3353, in __del__
+  File "C:\Users\rahbi\AppData\Local\Programs\Python\Python313\Lib\site-packages\mediapipe\tasks\python\vision\face_landmarker.py", line 3328, in close
+  File "C:\Users\rahbi\AppData\Local\Programs\Python\Python313\Lib\site-packages\mediapipe\tasks\python\core\serial_dispatcher.py", line 74, in shutdown_aware_handler
+  File "C:\Users\rahbi\AppData\Local\Programs\Python\Python313\Lib\site-packages\mediapipe\tasks\python\core\mediapipe_c_utils.py", line 126, in dispatcher_wrapper
+TypeError: 'NoneType' object is not callable

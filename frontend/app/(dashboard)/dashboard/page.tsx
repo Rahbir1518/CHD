@@ -9,6 +9,7 @@ import TranscriptionPanel from "@/components/TranscriptionPanel";
 import LipReadingPanel from "@/components/LipReadingPanel";
 import PitchAnalysisPanel from "@/components/PitchAnalysisPanel";
 import type { RecordedFrame } from "@/lib/storage";
+import { isVibrationSupported } from "@/lib/haptics";
 
 interface LipLandmark {
   x: number;
@@ -137,7 +138,7 @@ export default function DashboardPage() {
           setCurrentHapticPattern(data.pattern || null);
           setHapticLog(prev => [...prev.slice(-19), data]);
           
-          if (navigator.vibrate && data.pattern?.length > 0) {
+          if (isVibrationSupported() && data.pattern?.length > 0) {
             navigator.vibrate(data.pattern);
           }
           
@@ -216,7 +217,7 @@ export default function DashboardPage() {
 
   const handlePlaybackHaptic = useCallback((pattern: number[]) => {
     setCurrentHapticPattern(pattern);
-    if (navigator.vibrate) navigator.vibrate(pattern);
+    if (isVibrationSupported()) navigator.vibrate(pattern);
     const dur = pattern.reduce((a, b) => a + b, 0);
     setTimeout(() => setCurrentHapticPattern(null), dur + 100);
   }, []);

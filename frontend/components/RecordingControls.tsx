@@ -10,6 +10,7 @@ import {
   deleteRecording,
   getStorageUsage,
 } from "@/lib/storage";
+import { isVibrationSupported } from "@/lib/haptics";
 
 interface LipLandmark {
   x: number;
@@ -171,7 +172,7 @@ export default function RecordingControls({
         // Trigger haptic if present
         if (frame.hapticPattern && frame.hapticPattern.length > 0) {
           onPlaybackHaptic?.(frame.hapticPattern);
-          if (navigator.vibrate) {
+          if (isVibrationSupported()) {
             navigator.vibrate(frame.hapticPattern);
           }
         }

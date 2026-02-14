@@ -1,0 +1,12 @@
+
+> frontend@0.1.0 dev
+> next dev --hostname 0.0.0.0 --experimental-https --experimental-https-key certificates/localhost-key.pem --experimental-https-cert certificates/localhost.pem
+
+▲ Next.js 16.1.6 (Turbopack)
+- Local:         https://localhost:3001
+- Network:       https://0.0.0.0:3001
+- Environments: .env.local, .env
+
+✓ Starting...
+  Suggestion: If you intended to restart next dev, terminate the other process, and then try again.
+[?25h

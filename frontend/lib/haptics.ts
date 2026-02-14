@@ -6,6 +6,7 @@ export {
   LaryngealHapticEngine,
   generateTestPattern,
   getTestSoundDescription,
+  isVibrationSupported,
   type HapticConfig,
   type HapticState,
 } from './laryngealHaptics';

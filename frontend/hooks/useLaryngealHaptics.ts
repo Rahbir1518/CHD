@@ -77,11 +77,15 @@ export function useLaryngealHaptics(config?: HapticConfig): UseLaryngealHapticsR
   const setEnabled = useCallback((val: boolean) => {
     setEnabledState(val);
     engineRef.current?.updateConfig({ enabled: val });
-    if (!val) {
+    if (val && isSupported) {
+      // Unlock Vibration API: first vibrate must be in response to user gesture.
+      // Toggling haptics ON counts; this allows subsequent automated vibrations.
+      navigator.vibrate(20);
+    } else if (!val) {
       engineRef.current?.stop();
       setState(EMPTY_STATE);
     }
-  }, []);
+  }, [isSupported]);
 
   const feed = useCallback((frame: PitchFrame) => {
     engineRef.current?.feed(frame);

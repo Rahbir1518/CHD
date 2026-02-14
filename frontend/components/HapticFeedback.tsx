@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { isVibrationSupported } from '@/lib/haptics';
 
 interface HapticEvent {
   type: 'haptic_feedback';
@@ -32,8 +33,8 @@ const HapticFeedback: React.FC<HapticFeedbackProps> = ({
     setConfidence(event.confidence);
     setIsActive(true);
     
-    // Trigger actual device vibration if supported
-    if (navigator.vibrate && event.pattern.length > 0) {
+    // Trigger actual device vibration if supported (excludes iOS - can freeze)
+    if (isVibrationSupported() && event.pattern.length > 0) {
       navigator.vibrate(event.pattern);
     }
     

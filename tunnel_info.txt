@@ -1,0 +1,2 @@
+﻿TUNNEL: frontend | URL: https://nonfashionably-sartorial-marry.ngrok-free.dev | ADDR: http://localhost:3000
+TUNNEL: backend | URL: https://nonfashionably-sartorial-marry.ngrok-free.dev | ADDR: http://localhost:8000

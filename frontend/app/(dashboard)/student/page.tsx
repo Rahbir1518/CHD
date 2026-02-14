@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import ConnectionStatus from "@/components/ConnectionStatus";
 import { usePitchAnalysis } from "@/hooks/usePitchAnalysis";
 import { useLaryngealHaptics } from "@/hooks/useLaryngealHaptics";
-import { getTestSoundDescription } from "@/lib/laryngealHaptics";
+import { getTestSoundDescription, isVibrationSupported } from "@/lib/laryngealHaptics";
 
 interface LipBoundingBox {
   x: number;
@@ -25,6 +25,7 @@ export default function StudentPage() {
   const [lipBbox, setLipBbox] = useState<LipBoundingBox | null>(null);
   const [showProcessed, setShowProcessed] = useState(true);
   const [showHapticPanel, setShowHapticPanel] = useState(false);
+  const [isSecureContext, setIsSecureContext] = useState(true);
 
   // ── Local pitch analysis (runs on-device for zero-latency haptics) ──
   const pitch = usePitchAnalysis({
@@ -60,16 +61,28 @@ export default function StudentPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pitch.isActive]);
 
-  // Initialize with window location if possible
+  // Initialize with window location if possible (use wss:// when page is HTTPS)
   useEffect(() => {
     if (typeof window !== "undefined") {
       const host = window.location.hostname;
-      setServerUrl(`ws://${host}:8000/ws/video`);
+      const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
+      setServerUrl(`${wsScheme}://${host}:8000/ws/video`);
+      setIsSecureContext(window.isSecureContext);
     }
+  }, []);
+
+  // Test vibration (must run in direct response to user tap for Chrome to allow it)
+  const testVibration = useCallback(() => {
+    if (isVibrationSupported()) navigator.vibrate([150, 80, 150]);
   }, []);
 
   // Start Camera + Mic together
   const startCamera = async () => {
+    // Unlock Vibration API: Chrome requires the FIRST vibrate() to be in direct
+    // response to a user gesture. Use a noticeable pulse so the user feels it;
+    // subsequent vibrations from pitch analysis will then work.
+    if (isVibrationSupported()) navigator.vibrate([80, 40, 80]);
+
     try {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error(
@@ -122,7 +135,7 @@ export default function StudentPage() {
           data.pattern.length > 0
         ) {
           // Only use backend patterns if local pitch analysis isn't running
-          if (!pitch.isActive && navigator.vibrate) {
+          if (!pitch.isActive && isVibrationSupported()) {
             navigator.vibrate(data.pattern);
           }
         }
@@ -191,6 +204,11 @@ export default function StudentPage() {
 
   return (
     <div className="flex flex-col h-screen bg-black text-white p-4">
+      {!isSecureContext && (
+        <div className="mb-3 px-3 py-2 bg-amber-900/50 border border-amber-500/50 rounded-lg text-amber-200 text-sm">
+          ⚠️ You used &quot;Proceed anyway&quot; (invalid cert). We still try vibration — tap &quot;Test vibration&quot; to check. If it never vibrates, the browser may be blocking it; try the same page on the same Wi‑Fi with a valid HTTPS hostname later.
+        </div>
+      )}
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-lg font-bold">Student Cam</h1>
         <div className="flex items-center gap-3">
@@ -226,12 +244,12 @@ export default function StudentPage() {
         <label className="text-xs text-gray-400 uppercase font-semibold">
           Server Address
         </label>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <input
             type="text"
             value={serverUrl}
             onChange={(e) => setServerUrl(e.target.value)}
-            className="flex-1 bg-gray-800 rounded px-3 py-2 text-sm font-mono border border-gray-700 focus:border-blue-500 outline-none"
+            className="flex-1 min-w-0 bg-gray-800 rounded px-3 py-2 text-sm font-mono border border-gray-700 focus:border-blue-500 outline-none"
             placeholder="ws://192.168.x.x:8000/ws/video"
           />
           <button
@@ -239,6 +257,14 @@ export default function StudentPage() {
             className="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded text-sm font-bold transition-colors"
           >
             Connect
+          </button>
+          <button
+            type="button"
+            onClick={testVibration}
+            className="bg-purple-600 hover:bg-purple-500 px-4 py-2 rounded text-sm font-bold transition-colors flex items-center gap-1"
+            title="Tap to test if your phone can vibrate (requires HTTPS)"
+          >
+            📳 Test vibration
           </button>
         </div>
       </div>

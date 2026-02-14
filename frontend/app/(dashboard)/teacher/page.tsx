@@ -7,6 +7,7 @@ import PhonemeTimeline from "@/components/PhonemeTimeline";
 import RecordingControls from "@/components/RecordingControls";
 import TranscriptionPanel from "@/components/TranscriptionPanel";
 import type { RecordedFrame } from "@/lib/storage";
+import { isVibrationSupported } from "@/lib/haptics";
 
 interface LipLandmark {
   x: number;
@@ -61,20 +62,23 @@ export default function TeacherPage() {
     return 0;
   }, []);
 
+  const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  const wsBase = apiBase.replace(/^http/, "ws");
+
   // Fetch available lessons
   useEffect(() => {
-    fetch("http://localhost:8000/lessons")
+    fetch(`${apiBase}/lessons`)
       .then(r => r.json())
       .then(data => {
         if (data.lessons) setAvailableLessons(data.lessons);
       })
       .catch(() => {});
-  }, []);
+  }, [apiBase]);
 
   // WebSocket connection
   useEffect(() => {
     setStatus("connecting");
-    const ws = new WebSocket("ws://localhost:8000/ws/viewer");
+    const ws = new WebSocket(`${wsBase}/ws/viewer`);
     wsRef.current = ws;
     let frames = 0;
 
@@ -141,7 +145,7 @@ export default function TeacherPage() {
       ws.close();
       clearInterval(fpsInterval);
     };
-  }, [calcMouthOpenness, isPlayingRecording]);
+  }, [calcMouthOpenness, isPlayingRecording, wsBase]);
 
   // Playback timer
   useEffect(() => {
@@ -160,7 +164,7 @@ export default function TeacherPage() {
 
   const loadLesson = async () => {
     try {
-      await fetch(`http://localhost:8000/lessons/load/${selectedLesson}`, { method: "POST" });
+      await fetch(`${apiBase}/lessons/load/${selectedLesson}`, { method: "POST" });
       sendControl("load_lesson", { lesson_name: selectedLesson });
     } catch (e) {
       console.error("Failed to load lesson", e);
@@ -190,7 +194,7 @@ export default function TeacherPage() {
   const handlePlaybackHaptic = useCallback((pattern: number[]) => {
     setCurrentHapticPattern(pattern);
     // Vibrate if supported
-    if (navigator.vibrate) navigator.vibrate(pattern);
+    if (isVibrationSupported()) navigator.vibrate(pattern);
     const dur = pattern.reduce((a, b) => a + b, 0);
     setTimeout(() => setCurrentHapticPattern(null), dur + 100);
   }, []);
