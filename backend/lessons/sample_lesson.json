@@ -1,3 +1,158 @@
 {
-  "_comment": "this is sample_lesson.json — Pre-aligned phoneme timestamps for a lesson video"
+  "_comment": "Sample lesson for HapticPhonix - Basic vowel and consonant practice",
+  "title": "Basic Phonetics Lesson",
+  "description": "Introduction to vowels and consonants with haptic feedback",
+  "duration": 30.0,
+  "phonemes": [
+    {
+      "id": "ph1",
+      "type": "vowel",
+      "character": "A",
+      "word": "Apple",
+      "start": 0.0,
+      "duration": 1.5,
+      "haptic_pattern": [100, 50, 100],
+      "confidence": 1.0,
+      "description": "Long 'A' sound as in Apple"
+    },
+    {
+      "id": "ph2",
+      "type": "silence",
+      "character": "",
+      "word": "",
+      "start": 1.5,
+      "duration": 0.5,
+      "haptic_pattern": [],
+      "confidence": 1.0,
+      "description": "Brief pause"
+    },
+    {
+      "id": "ph3",
+      "type": "vowel",
+      "character": "E",
+      "word": "Elephant",
+      "start": 2.0,
+      "duration": 1.5,
+      "haptic_pattern": [100, 50, 100],
+      "confidence": 1.0,
+      "description": "Long 'E' sound as in Elephant"
+    },
+    {
+      "id": "ph4",
+      "type": "silence",
+      "character": "",
+      "word": "",
+      "start": 3.5,
+      "duration": 0.5,
+      "haptic_pattern": [],
+      "confidence": 1.0,
+      "description": "Brief pause"
+    },
+    {
+      "id": "ph5",
+      "type": "consonant",
+      "character": "B",
+      "word": "Ball",
+      "start": 4.0,
+      "duration": 1.0,
+      "haptic_pattern": [200, 100, 200],
+      "confidence": 1.0,
+      "description": "'B' sound as in Ball - bilabial stop"
+    },
+    {
+      "id": "ph6",
+      "type": "silence",
+      "character": "",
+      "word": "",
+      "start": 5.0,
+      "duration": 0.5,
+      "haptic_pattern": [],
+      "confidence": 1.0,
+      "description": "Brief pause"
+    },
+    {
+      "id": "ph7",
+      "type": "consonant",
+      "character": "V",
+      "word": "Violin",
+      "start": 5.5,
+      "duration": 1.0,
+      "haptic_pattern": [200, 100, 200],
+      "confidence": 1.0,
+      "description": "'V' sound as in Violin - labiodental fricative"
+    },
+    {
+      "id": "ph8",
+      "type": "silence",
+      "character": "",
+      "word": "",
+      "start": 6.5,
+      "duration": 1.0,
+      "haptic_pattern": [],
+      "confidence": 1.0,
+      "description": "Longer pause"
+    },
+    {
+      "id": "ph9",
+      "type": "buzz",
+      "character": "Z",
+      "word": "Zipper",
+      "start": 7.5,
+      "duration": 1.0,
+      "haptic_pattern": [50, 25, 50, 25, 50],
+      "confidence": 1.0,
+      "description": "'Z' sound as in Zipper - alveolar fricative with buzzing"
+    },
+    {
+      "id": "ph10",
+      "type": "silence",
+      "character": "",
+      "word": "",
+      "start": 8.5,
+      "duration": 2.0,
+      "haptic_pattern": [],
+      "confidence": 1.0,
+      "description": "Practice pause - repeat the sequence"
+    },
+    {
+      "id": "ph11",
+      "type": "vowel",
+      "character": "O",
+      "word": "Orange",
+      "start": 10.5,
+      "duration": 1.5,
+      "haptic_pattern": [100, 50, 100],
+      "confidence": 1.0,
+      "description": "Long 'O' sound as in Orange"
+    },
+    {
+      "id": "ph12",
+      "type": "consonant",
+      "character": "M",
+      "word": "Moon",
+      "start": 12.0,
+      "duration": 1.0,
+      "haptic_pattern": [200, 100, 200],
+      "confidence": 1.0,
+      "description": "'M' sound as in Moon - bilabial nasal"
+    },
+    {
+      "id": "ph13",
+      "type": "buzz",
+      "character": "S",
+      "word": "Sun",
+      "start": 13.0,
+      "duration": 1.0,
+      "haptic_pattern": [50, 25, 50, 25, 50],
+      "confidence": 1.0,
+      "description": "'S' sound as in Sun - alveolar fricative with hissing"
+    }
+  ],
+  "metadata": {
+    "created_by": "HapticPhonix System",
+    "version": "1.0",
+    "target_age_group": "5-12 years",
+    "difficulty_level": "beginner",
+    "estimated_completion_time": "30 seconds"
+  }
 }

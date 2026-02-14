@@ -6,6 +6,7 @@ import ConnectionStatus from "@/components/ConnectionStatus";
 
 export default function DashboardPage() {
   const [frameSrc, setFrameSrc] = useState<string | null>(null);
+  const [debugInfo, setDebugInfo] = useState<Record<string, unknown>>({});
   const [status, setStatus] = useState<"connected" | "disconnected" | "error" | "connecting">("disconnected");
   const [fps, setFps] = useState(0);
   
@@ -29,6 +30,8 @@ export default function DashboardPage() {
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
+        console.log("Received message:", data);
+        
         if (data.frame_base64) {
           // Check if it's a raw base64 string or a data URL
           // Our main.py sends raw base64 usually, but student sends data URL.
@@ -37,11 +40,21 @@ export default function DashboardPage() {
             ? data.frame_base64 
             : `data:image/jpeg;base64,${data.frame_base64}`;
           
+          console.log("Setting frame source, length:", src.length);
           setFrameSrc(src);
           frames++;
         }
+        
+        if (data.landmarks) {
+          console.log(`Received ${data.landmarks.length} landmarks`);
+        }
+        
+        if (data.processing_error) {
+          console.warn("Processing error:", data.processing_error);
+        }
       } catch (err) {
         console.error("Error parsing message", err);
+        console.log("Raw message data:", event.data);
       }
     };
     
