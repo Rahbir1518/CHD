@@ -1,5 +1,5 @@
 
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import LipMeshOverlay from './LipMeshOverlay';
 
 interface LipLandmark {
@@ -9,6 +9,13 @@ interface LipLandmark {
   index: number;
 }
 
+interface LipBoundingBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 interface VideoPlayerProps {
   frameSrc: string | null;
   status: string;
@@ -16,6 +23,7 @@ interface VideoPlayerProps {
   showOverlay?: boolean;
   mouthOpenness?: number;
   currentPhoneme?: string | null;
+  lipBoundingBox?: LipBoundingBox | null;
 }
 
 const VideoPlayer: React.FC<VideoPlayerProps> = ({ 
@@ -24,7 +32,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   landmarks = [], 
   showOverlay = true,
   mouthOpenness,
-  currentPhoneme 
+  currentPhoneme,
+  lipBoundingBox = null
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 640, height: 480 });
@@ -63,6 +72,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               width={dimensions.width}
               height={dimensions.height}
               isVisible={true}
+              lipBoundingBox={lipBoundingBox}
             />
           )}
         </>
