@@ -15,6 +15,7 @@ from websocket_server import manager, viewer_manager, haptic_manager, speech_man
 from mediapipe_processor import MediaPipeProcessor
 from phoneme_engine import phoneme_engine, load_lesson
 from lip_reading import lip_reader
+from snowflake_coach import snowflake_coach
 
 # Load .env from backend directory so GEMINI_API_KEY is found
 _load_env = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env.local")
@@ -480,6 +481,73 @@ async def translate_text(request: Request):
     except Exception as e:
         print(f"Gemini translation error: {e}")
         return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+# ── Snowflake AI Coaching ──────────────────────────────────────────────────
+@app.post("/api/coaching-feedback")
+async def get_coaching_feedback(request: Request):
+    """
+    Get personalized AI coaching feedback from Snowflake Cortex.
+    
+    This endpoint uses Snowflake's multi-model LLM access to provide
+    intelligent, context-aware coaching that improves with more practice data.
+    
+    Request body:
+    {
+        "phonemes": ["AH", "EE", "S"],
+        "scores": {"AH": 0.85, "EE": 0.62, "S": 0.90},
+        "struggles": ["inconsistent pitch", "weak vibration"],
+        "duration": 300  // seconds
+    }
+    """
+    try:
+        data = await request.json()
+        
+        feedback = await snowflake_coach.generate_coaching_feedback(
+            phonemes_practiced=data.get("phonemes", []),
+            accuracy_scores=data.get("scores", {}),
+            struggles=data.get("struggles", []),
+            session_duration=data.get("duration"),
+            model=data.get("model", "mistral-large")
+        )
+        
+        return {
+            "success": True,
+            "feedback": feedback.feedback_text,
+            "encouragement": feedback.encouragement,
+            "focus_areas": feedback.focus_areas,
+            "next_steps": feedback.next_steps,
+            "model": feedback.model_used,
+            "provider": "snowflake-cortex"
+        }
+        
+    except Exception as e:
+        print(f"Snowflake coaching error: {e}")
+        return JSONResponse(
+            status_code=500, 
+            content={"error": str(e), "provider": "snowflake-cortex"}
+        )
+
+
+@app.get("/api/phoneme-tip/{phoneme}")
+async def get_phoneme_tip(phoneme: str):
+    """
+    Get a quick pronunciation tip for a specific phoneme using Snowflake.
+    Uses the fastest model (Mixtral) for low-latency responses.
+    """
+    try:
+        tip = await snowflake_coach.get_quick_tip(phoneme.upper())
+        return {
+            "phoneme": phoneme.upper(),
+            "tip": tip,
+            "provider": "snowflake-cortex"
+        }
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e)}
+        )
+
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))
