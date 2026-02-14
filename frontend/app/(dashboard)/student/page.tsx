@@ -64,9 +64,11 @@ export default function StudentPage() {
   // Initialize with window location if possible (use wss:// when page is HTTPS)
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const host = window.location.hostname;
-      const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
-      setServerUrl(`${wsScheme}://${host}:8000/ws/video`);
+      // Connect to the SAME origin (Next.js server)
+      // Next.js will proxy /ws/video -> localhost:8000/ws/video
+      const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+      const host = window.location.host; 
+      setServerUrl(`${protocol}://${host}/ws/video`);
       setIsSecureContext(window.isSecureContext);
     }
   }, []);
