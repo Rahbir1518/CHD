@@ -8,6 +8,7 @@ export default function DashboardPage() {
   const [frameSrc, setFrameSrc] = useState<string | null>(null);
   const [status, setStatus] = useState<"connected" | "disconnected" | "error" | "connecting">("disconnected");
   const [fps, setFps] = useState(0);
+  const [lipPrediction, setLipPrediction] = useState<string | null>(null);
   
   // Connect on mount
   useEffect(() => {
@@ -30,15 +31,14 @@ export default function DashboardPage() {
       try {
         const data = JSON.parse(event.data);
         if (data.frame_base64) {
-          // Check if it's a raw base64 string or a data URL
-          // Our main.py sends raw base64 usually, but student sends data URL.
-          // Let's handle both.
-          const src = data.frame_base64.startsWith('data:') 
-            ? data.frame_base64 
+          const src = data.frame_base64.startsWith('data:')
+            ? data.frame_base64
             : `data:image/jpeg;base64,${data.frame_base64}`;
-          
           setFrameSrc(src);
           frames++;
+        }
+        if (data.lip_prediction != null) {
+          setLipPrediction(data.lip_prediction);
         }
       } catch (err) {
         console.error("Error parsing message", err);
@@ -77,6 +77,12 @@ export default function DashboardPage() {
             <div className="p-3">
               <h2 className="font-semibold text-sm text-gray-700">Live Camera Feed</h2>
               <p className="text-xs text-gray-500">Streaming from student device via WebSocket</p>
+              {lipPrediction && (
+                <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-lg">
+                  <span className="text-xs font-medium text-amber-800">Lip reading:</span>
+                  <p className="text-sm font-mono text-amber-900 mt-0.5">&ldquo;{lipPrediction}&rdquo;</p>
+                </div>
+              )}
             </div>
           </div>
           
@@ -86,7 +92,7 @@ export default function DashboardPage() {
               <h2 className="font-semibold text-lg mb-4 text-gray-800">Session Controls</h2>
               <div className="space-y-4">
                 <div className="p-4 bg-blue-50 text-blue-800 rounded-lg text-sm">
-                  Waiting for phoneme engine integration...
+                  MediaPipe + LipNet: lip ROI from phone camera is buffered and decoded every 75 frames. Haptic triggers on the phone when a prediction is emitted.
                 </div>
                 {/* Placeholders for future controls */}
                 <div className="h-32 border-2 border-dashed border-gray-200 rounded-lg flex items-center justify-center text-gray-400 text-sm">

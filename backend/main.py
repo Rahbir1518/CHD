@@ -1,11 +1,13 @@
 import os
+import asyncio
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
-# Import our managers
+# Import our managers and lip pipeline
 from websocket_server import ConnectionManager, ViewerManager
+from lip_processor import get_pipeline
 
 load_dotenv()
 
@@ -39,32 +41,38 @@ async def root():
 async def health_check():
     return {"status": "healthy"}
 
+def _run_lip_pipeline(base64_data: str):
+    """Run lip pipeline in thread (MediaPipe + LipNet buffer); returns (prediction_text or None, should_broadcast)."""
+    try:
+        return get_pipeline().process_base64(base64_data)
+    except Exception as e:
+        print(f"Lip pipeline error: {e}")
+        return None, False
+
+
 @app.websocket("/ws/video")
 async def websocket_video(websocket: WebSocket):
     """
     Endpoint for the PHONE (camera source).
-    Receives base64 frames, and relays them to dashboard viewers.
+    Receives base64 frames, runs MediaPipe + LipNet lip pipeline, relays to viewers and optional vibrate to phone.
     """
     await manager.connect(websocket)
     try:
         while True:
-            # Receive base64 frame data from phone
-            # We expect just the raw base64 string or a simple JSON
-            # For simplicity matching the reference, let's assume raw base64 string first
-            # but usually it's better to send JSON. 
-            # Reference C:\cxc\cxc implementation receives text.
             data = await websocket.receive_text()
-            
-            # Construct the payload for viewers
-            # We can add processed data here later (MediaPipe landmarks etc.)
-            payload = {
-                "frame_base64": data,
-                # "landmarks": ... (future)
-            }
-            
-            # Broadcast to all dashboards
+            payload = {"frame_base64": data}
+
+            # Run lip pipeline in thread (extract lip ROI, buffer 75 frames, LipNet inference)
+            prediction, should_broadcast = await asyncio.to_thread(_run_lip_pipeline, data)
+            if should_broadcast and prediction:
+                payload["lip_prediction"] = prediction
+                # Optionally trigger haptic on phone for the predicted segment
+                try:
+                    await websocket.send_json({"type": "vibrate", "pattern": [80, 40, 80]})
+                except Exception:
+                    pass
+
             await viewer_manager.broadcast(payload)
-            
     except WebSocketDisconnect:
         manager.disconnect(websocket)
     except Exception as e:

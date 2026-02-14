@@ -65,6 +65,17 @@ export default function StudentPage() {
       setStatus("error");
     };
 
+    ws.onmessage = (event) => {
+      try {
+        const data = typeof event.data === "string" ? JSON.parse(event.data) : null;
+        if (data?.type === "vibrate" && Array.isArray(data.pattern) && navigator.vibrate) {
+          navigator.vibrate(data.pattern);
+        }
+      } catch {
+        // ignore non-JSON or parse errors
+      }
+    };
+
     setSocket(ws);
   };
 
