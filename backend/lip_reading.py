@@ -14,7 +14,7 @@ from typing import List, Dict, Optional
 from dataclasses import dataclass, field
 from dotenv import load_dotenv
 
-load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env.local"))
 
 
 @dataclass

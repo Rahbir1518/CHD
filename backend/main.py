@@ -17,7 +17,7 @@ from phoneme_engine import phoneme_engine, load_lesson
 from lip_reading import lip_reader
 
 # Load .env from backend directory so GEMINI_API_KEY is found
-_load_env = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+_load_env = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env.local")
 load_dotenv(_load_env)
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
