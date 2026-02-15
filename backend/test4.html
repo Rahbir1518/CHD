@@ -1,0 +1,1526 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HapticPhonix | Feel the Sound. Master Speech.</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Space Grotesk', 'sans-serif'],
+                    },
+                    colors: {
+                        'phonix': {
+                            black: '#0a0a0a',
+                            dark: '#111111',
+                            gray: '#1a1a1a',
+                            copper: '#B87333',
+                            gold: '#D4A574',
+                            cream: '#F5F1E8',
+                            orange: '#E67E22',
+                            white: '#F5F5F5',
+                            red: '#FF3B30'
+                        }
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'float': 'float 6s ease-in-out infinite',
+                        'vibrate': 'vibrate 0.3s ease-in-out infinite',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-20px)' },
+                        },
+                        vibrate: {
+                            '0%, 100%': { transform: 'translateX(0)' },
+                            '25%': { transform: 'translateX(-2px)' },
+                            '75%': { transform: 'translateX(2px)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background-color: #0a0a0a;
+            color: #F5F5F5;
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+            cursor: none;
+        }
+        
+        /* Custom Cursor System */
+        .cursor-main {
+            width: 40px;
+            height: 40px;
+            border: 2px solid #D4A574;
+            border-radius: 50%;
+            position: fixed;
+            pointer-events: none;
+            z-index: 9999;
+            mix-blend-mode: difference;
+            transition: transform 0.15s ease-out, width 0.3s, height 0.3s, background 0.3s;
+            transform: translate(-50%, -50%);
+        }
+        
+        .cursor-main.hover {
+            width: 80px;
+            height: 80px;
+            background: #D4A574;
+            mix-blend-mode: difference;
+        }
+        
+        .cursor-dot {
+            width: 8px;
+            height: 8px;
+            background: #B87333;
+            border-radius: 50%;
+            position: fixed;
+            pointer-events: none;
+            z-index: 9999;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 20px #B87333, 0 0 40px #B87333;
+        }
+        
+        /* Grain Overlay */
+        .grain-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 9998;
+            opacity: 0.04;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='5' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+            animation: noiseShift 0.2s steps(3) infinite;
+        }
+        
+        @keyframes noiseShift {
+            0%, 100% { transform: translate(0, 0); }
+            33% { transform: translate(-2px, 2px); }
+            66% { transform: translate(2px, -2px); }
+        }
+        
+        /* Scanlines */
+        .scanlines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 9997;
+            background: linear-gradient(
+                to bottom,
+                rgba(255,255,255,0),
+                rgba(255,255,255,0) 50%,
+                rgba(0,0,0,0.05) 50%,
+                rgba(0,0,0,0.05)
+            );
+            background-size: 100% 4px;
+        }
+        
+        /* Vignette */
+        .vignette {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 9996;
+            background: radial-gradient(circle, transparent 30%, rgba(10,10,10,0.6) 100%);
+        }
+        
+        /* Typography */
+        .text-mega {
+            font-size: clamp(4rem, 15vw, 14rem);
+            line-height: 0.85;
+            letter-spacing: -0.05em;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+        
+        .text-huge {
+            font-size: clamp(2.5rem, 8vw, 6rem);
+            line-height: 0.9;
+            letter-spacing: -0.04em;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, #F5F1E8 0%, #D4A574 50%, #B87333 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            background-size: 200% 200%;
+            animation: gradientShift 5s ease infinite;
+        }
+        
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+        
+        .text-outline-copper {
+            -webkit-text-stroke: 2px #D4A574;
+            color: transparent;
+            transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        
+        .text-outline-copper:hover {
+            color: #D4A574;
+            -webkit-text-stroke: 0px;
+            text-shadow: 0 0 80px rgba(216, 165, 116, 0.4);
+        }
+        
+        /* Glitch Effect */
+        .glitch-copper {
+            position: relative;
+            animation: glitchSkew 4s infinite;
+        }
+        
+        .glitch-copper::before,
+        .glitch-copper::after {
+            content: attr(data-text);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .glitch-copper::before {
+            animation: glitchAnim1 2s infinite linear alternate-reverse;
+            color: #B87333;
+            z-index: -1;
+            clip-path: polygon(0 0, 100% 0, 100% 35%, 0 35%);
+        }
+        
+        .glitch-copper::after {
+            animation: glitchAnim2 3s infinite linear alternate-reverse;
+            color: #E67E22;
+            z-index: -2;
+            clip-path: polygon(0 65%, 100% 65%, 100% 100%, 0 100%);
+        }
+        
+        @keyframes glitchAnim1 {
+            0% { transform: translate(0); }
+            20% { transform: translate(-3px, 3px); }
+            40% { transform: translate(-3px, -3px); }
+            60% { transform: translate(3px, 3px); }
+            80% { transform: translate(3px, -3px); }
+            100% { transform: translate(0); }
+        }
+        
+        @keyframes glitchAnim2 {
+            0% { transform: translate(0); }
+            20% { transform: translate(3px, -3px); }
+            40% { transform: translate(3px, 3px); }
+            60% { transform: translate(-3px, -3px); }
+            80% { transform: translate(-3px, 3px); }
+            100% { transform: translate(0); }
+        }
+        
+        @keyframes glitchSkew {
+            0%, 100% { transform: skew(0deg); }
+            20% { transform: skew(-1deg); }
+            40% { transform: skew(1deg); }
+            60% { transform: skew(-0.5deg); }
+            80% { transform: skew(0.5deg); }
+        }
+        
+        /* Glass Panel */
+        .glass-panel {
+            background: rgba(26, 26, 26, 0.4);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(212, 165, 116, 0.15);
+        }
+        
+        /* Magnetic Button */
+        .btn-magnetic {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem 3rem;
+            background: linear-gradient(135deg, #B87333 0%, #D4A574 100%);
+            color: #000000;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-size: 0.875rem;
+            border: none;
+            cursor: none;
+            overflow: hidden;
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        
+        .btn-magnetic::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: #F5F1E8;
+            transition: left 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 0;
+        }
+        
+        .btn-magnetic:hover::before {
+            left: 0;
+        }
+        
+        .btn-magnetic span {
+            position: relative;
+            z-index: 1;
+            transition: color 0.3s;
+        }
+        
+        .btn-magnetic:hover span {
+            color: #000000;
+        }
+        
+        /* Feature Cards */
+        .feature-card {
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            transform-style: preserve-3d;
+            perspective: 1000px;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            border-color: rgba(212, 165, 116, 0.4);
+            box-shadow: 0 20px 40px rgba(184, 115, 51, 0.15);
+        }
+        
+        /* Progress Bar */
+        .progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #B87333, #D4A574);
+            z-index: 10000;
+            transform-origin: left;
+            transform: scaleX(0);
+            box-shadow: 0 0 20px rgba(184, 115, 51, 0.5);
+        }
+        
+        /* Marquee */
+        .marquee-track {
+            display: flex;
+            animation: marquee 20s linear infinite;
+        }
+        
+        @keyframes marquee {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+        
+        /* Grid Background */
+        .grid-bg {
+            background-image: 
+                linear-gradient(rgba(212,165,116,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(212,165,116,0.03) 1px, transparent 1px);
+            background-size: 100px 100px;
+        }
+        
+        /* Phoneme Bar Animation */
+        .phoneme-bar {
+            animation: phonemePulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes phonemePulse {
+            0%, 100% { opacity: 0.4; transform: scaleY(0.8); }
+            50% { opacity: 1; transform: scaleY(1.2); }
+        }
+        
+        /* Pulse Ring */
+        .pulse-ring {
+            position: absolute;
+            border: 2px solid rgba(184, 115, 51, 0.3);
+            border-radius: 50%;
+            animation: pulseRing 2s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+        }
+        
+        @keyframes pulseRing {
+            0% { transform: scale(0.8); opacity: 1; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+        
+        /* Nav Link */
+        .nav-link {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #D4A574, transparent);
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+        }
+        
+        .nav-link:hover::after {
+            transform: translateX(0);
+        }
+        
+        /* Scroll Indicator */
+        .scroll-indicator {
+            animation: scrollBounce 2s infinite;
+        }
+        
+        @keyframes scrollBounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(10px); }
+        }
+        
+        /* Reveal Text */
+        .reveal-text {
+            overflow: hidden;
+        }
+        
+        .reveal-text span {
+            display: inline-block;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- Effects Layers -->
+    <div class="grain-overlay"></div>
+    <div class="scanlines"></div>
+    <div class="vignette"></div>
+    <div class="progress-bar" id="progress"></div>
+    
+    <!-- Custom Cursor -->
+    <div class="cursor-main" id="cursor-main"></div>
+    <div class="cursor-dot" id="cursor-dot"></div>
+
+    <!-- Three.js Background -->
+    <canvas id="webgl" class="fixed top-0 left-0 w-full h-full -z-10"></canvas>
+
+    <!-- Navigation -->
+    <nav id="navbar" class="fixed top-0 left-0 w-full z-50 transition-all duration-500 opacity-0 -translate-y-full mix-blend-difference">
+        <div class="glass-panel border-b border-white/5">
+            <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-3 group cursor-pointer hover-target">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-phonix-copper to-phonix-gold flex items-center justify-center relative overflow-hidden">
+                        <div class="absolute inset-0 bg-white/20 animate-pulse-slow"></div>
+                        <svg class="w-5 h-5 text-white relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path>
+                        </svg>
+                    </div>
+                    <span class="font-display font-bold text-xl tracking-tight text-white group-hover:text-phonix-gold transition-colors">
+                        Haptic<span class="text-phonix-copper">Phonix</span>
+                    </span>
+                </div>
+
+                <div class="hidden md:flex items-center gap-8">
+                    <a href="#features" class="nav-link text-sm font-medium text-gray-400 hover:text-white transition-colors hover-target">Features</a>
+                    <a href="#technology" class="nav-link text-sm font-medium text-gray-400 hover:text-white transition-colors hover-target">Technology</a>
+                    <a href="#lessons" class="nav-link text-sm font-medium text-gray-400 hover:text-white transition-colors hover-target">Lessons</a>
+                    <a href="#dashboard" class="nav-link text-sm font-medium text-gray-400 hover:text-white transition-colors hover-target">Dashboard</a>
+                </div>
+
+                <div class="flex items-center gap-4">
+                    <button class="hidden md:block text-sm font-medium text-gray-400 hover:text-white transition-colors hover-target">Sign In</button>
+                    <button class="btn-magnetic text-sm hover-target" onclick="enterImmersive()">
+                        <span>Get Started</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="relative min-h-screen flex items-center justify-center overflow-hidden grid-bg">
+        <!-- Floating Elements -->
+        <div class="absolute inset-0 pointer-events-none">
+            <div class="absolute top-20 left-10 w-64 h-64 border border-phonix-copper/20 rounded-full animate-pulse"></div>
+            <div class="absolute bottom-40 right-20 w-96 h-96 border border-phonix-gold/10 rounded-full"></div>
+            <div class="absolute top-1/2 left-1/4 w-32 h-32 bg-phonix-copper/10 rounded-full blur-3xl"></div>
+        </div>
+        
+        <div class="relative z-10 text-center px-6 max-w-[95vw]">
+            <div class="mb-8 overflow-hidden">
+                <p class="text-xs md:text-sm font-black tracking-[0.5em] uppercase text-gray-500 reveal-text">
+                    <span class="inline-block">AI-Powered Speech Learning</span>
+                </p>
+            </div>
+            
+            <h1 class="text-mega font-black mb-8 leading-none select-none">
+                <div class="overflow-hidden">
+                    <span class="block reveal-text"><span class="inline-block text-outline-copper glitch-copper" data-text="FEEL">FEEL</span></span>
+                </div>
+                <div class="overflow-hidden">
+                    <span class="block reveal-text"><span class="inline-block gradient-text">THE</span></span>
+                </div>
+                <div class="overflow-hidden">
+                    <span class="block reveal-text"><span class="inline-block glitch-copper" data-text="SOUND">SOUND</span></span>
+                </div>
+            </h1>
+            
+            <div class="max-w-2xl mx-auto mb-12 overflow-hidden">
+                <p class="text-lg md:text-xl text-gray-400 font-medium leading-relaxed reveal-text">
+                    <span class="inline-block">HapticPhonix uses computer vision, AI lip-reading, and haptic feedback to create a revolutionary pronunciation learning experience.</span>
+                </p>
+            </div>
+            
+            <div class="flex flex-col sm:flex-row gap-6 justify-center items-center reveal-text">
+                <button class="btn-magnetic text-base hover-target" id="init-system">
+                    <span>Initialize System</span>
+                </button>
+                <button class="px-8 py-4 glass-panel text-white font-semibold rounded-full hover:bg-white/5 transition-all flex items-center gap-2 border border-white/10 hover-target">
+                    <svg class="w-5 h-5 text-phonix-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span>Watch Demo</span>
+                </button>
+            </div>
+
+            <!-- Stats -->
+            <div class="grid grid-cols-3 gap-8 pt-12 mt-12 border-t border-white/10 max-w-2xl mx-auto reveal-text">
+                <div>
+                    <div class="text-4xl font-black text-white mb-1 counter" data-target="98">0</div>
+                    <div class="text-xs font-bold uppercase tracking-widest text-gray-500">Accuracy %</div>
+                </div>
+                <div>
+                    <div class="text-4xl font-black text-white mb-1 counter" data-target="50">0</div>
+                    <div class="text-xs font-bold uppercase tracking-widest text-gray-500">Phonemes</div>
+                </div>
+                <div>
+                    <div class="text-4xl font-black text-white mb-1 counter" data-target="8">0</div>
+                    <div class="text-xs font-bold uppercase tracking-widest text-gray-500">D Haptic</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Scroll Indicator -->
+        <div class="absolute bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center gap-4 opacity-50">
+            <span class="text-[10px] font-black uppercase tracking-[0.5em] text-gray-500">Scroll</span>
+            <div class="w-px h-16 bg-gradient-to-b from-phonix-copper to-transparent"></div>
+        </div>
+    </section>
+
+    <!-- Marquee Section -->
+    <section class="py-8 border-y-2 border-phonix-copper/30 bg-black overflow-hidden">
+        <div class="marquee-track whitespace-nowrap">
+            <div class="flex items-center">
+                <span class="text-5xl md:text-7xl font-black uppercase tracking-tighter mx-8 text-white">Lip Reading AI</span>
+                <span class="text-5xl md:text-7xl font-black text-outline-copper mx-8">///</span>
+                <span class="text-5xl md:text-7xl font-black uppercase tracking-tighter mx-8 text-phonix-gold">8D Haptics</span>
+                <span class="text-5xl md:text-7xl font-black text-outline-copper mx-8">///</span>
+                <span class="text-5xl md:text-7xl font-black uppercase tracking-tighter mx-8 text-white">Real-time Processing</span>
+                <span class="text-5xl md:text-7xl font-black text-outline-copper mx-8">///</span>
+                <span class="text-5xl md:text-7xl font-black uppercase tracking-tighter mx-8 text-phonix-gold">Phoneme Engine</span>
+                <span class="text-5xl md:text-7xl font-black text-outline-copper mx-8">///</span>
+                <span class="text-5xl md:text-7xl font-black uppercase tracking-tighter mx-8 text-white">Lip Reading AI</span>
+                <span class="text-5xl md:text-7xl font-black text-outline-copper mx-8">///</span>
+                <span class="text-5xl md:text-7xl font-black uppercase tracking-tighter mx-8 text-phonix-gold">8D Haptics</span>
+                <span class="text-5xl md:text-7xl font-black text-outline-copper mx-8">///</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Live Pipeline Visualization -->
+    <section id="features" class="relative py-32 overflow-hidden">
+        <div class="content-layer max-w-7xl mx-auto px-6">
+            <div class="text-center mb-20">
+                <h2 class="text-huge font-black mb-6">Real-Time <span class="gradient-text">Pipeline</span></h2>
+                <p class="text-gray-400 max-w-2xl mx-auto text-lg">From camera capture to haptic feedback in milliseconds. Watch the AI process speech in real-time.</p>
+            </div>
+
+            <!-- Pipeline Steps -->
+            <div class="grid md:grid-cols-4 gap-6">
+                <!-- Step 1: Capture -->
+                <div class="feature-card glass-panel rounded-2xl p-6 border border-white/5 relative overflow-hidden group hover-target">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-phonix-copper/10 rounded-full blur-3xl group-hover:bg-phonix-copper/20 transition-all"></div>
+                    <div class="scan-line opacity-0 group-hover:opacity-100 absolute top-0 left-0 w-full h-px bg-phonix-gold/50"></div>
+                    <div class="relative z-10">
+                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-phonix-copper to-phonix-gold flex items-center justify-center mb-4">
+                            <svg class="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            </svg>
+                        </div>
+                        <h3 class="font-display font-bold text-xl mb-2 uppercase">1. Capture</h3>
+                        <p class="text-sm text-gray-400">Phone camera streams video at 30fps. Microphone captures audio for pitch analysis.</p>
+                        <div class="mt-4 flex gap-1">
+                            <div class="h-1 flex-1 bg-phonix-copper rounded-full phoneme-bar" style="animation-delay: 0s"></div>
+                            <div class="h-1 flex-1 bg-phonix-copper/60 rounded-full phoneme-bar" style="animation-delay: 0.2s"></div>
+                            <div class="h-1 flex-1 bg-phonix-copper/40 rounded-full phoneme-bar" style="animation-delay: 0.4s"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2: Process -->
+                <div class="feature-card glass-panel rounded-2xl p-6 border border-white/5 relative overflow-hidden group hover-target">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-phonix-gold/10 rounded-full blur-3xl group-hover:bg-phonix-gold/20 transition-all"></div>
+                    <div class="scan-line opacity-0 group-hover:opacity-100 absolute top-0 left-0 w-full h-px bg-phonix-gold/50" style="animation-delay: 0.5s"></div>
+                    <div class="relative z-10">
+                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-phonix-gold to-phonix-copper flex items-center justify-center mb-4">
+                            <svg class="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                            </svg>
+                        </div>
+                        <h3 class="font-display font-bold text-xl mb-2 uppercase">2. AI Process</h3>
+                        <p class="text-sm text-gray-400">MediaPipe detects lip landmarks. Gemini 2.0 Flash Vision reads lips in real-time.</p>
+                        <div class="mt-4 flex items-center gap-2">
+                            <div class="flex -space-x-2">
+                                <div class="w-6 h-6 rounded-full bg-phonix-copper/40 border border-black animate-pulse"></div>
+                                <div class="w-6 h-6 rounded-full bg-phonix-gold/40 border border-black animate-pulse" style="animation-delay: 0.2s"></div>
+                                <div class="w-6 h-6 rounded-full bg-white/20 border border-black animate-pulse" style="animation-delay: 0.4s"></div>
+                            </div>
+                            <span class="text-xs text-phonix-gold font-bold">Processing...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 3: Analyze -->
+                <div class="feature-card glass-panel rounded-2xl p-6 border border-white/5 relative overflow-hidden group hover-target">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl group-hover:bg-blue-500/20 transition-all"></div>
+                    <div class="scan-line opacity-0 group-hover:opacity-100 absolute top-0 left-0 w-full h-px bg-phonix-gold/50" style="animation-delay: 1s"></div>
+                    <div class="relative z-10">
+                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mb-4">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                            </svg>
+                        </div>
+                        <h3 class="font-display font-bold text-xl mb-2 uppercase">3. Analyze</h3>
+                        <p class="text-sm text-gray-400">Phoneme engine matches sounds to patterns. Pitch analysis detects voice frequency.</p>
+                        <div class="mt-4 h-8 flex items-end gap-1">
+                            <div class="w-2 bg-phonix-copper/60 rounded-t phoneme-bar" style="height: 40%"></div>
+                            <div class="w-2 bg-phonix-copper/80 rounded-t phoneme-bar" style="height: 70%; animation-delay: 0.1s"></div>
+                            <div class="w-2 bg-phonix-copper rounded-t phoneme-bar" style="height: 100%; animation-delay: 0.2s"></div>
+                            <div class="w-2 bg-phonix-copper/80 rounded-t phoneme-bar" style="height: 60%; animation-delay: 0.3s"></div>
+                            <div class="w-2 bg-phonix-copper/60 rounded-t phoneme-bar" style="height: 30%; animation-delay: 0.4s"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 4: Feedback -->
+                <div class="feature-card glass-panel rounded-2xl p-6 border border-white/5 relative overflow-hidden group hover-target">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-green-500/10 rounded-full blur-3xl group-hover:bg-green-500/20 transition-all"></div>
+                    <div class="scan-line opacity-0 group-hover:opacity-100 absolute top-0 left-0 w-full h-px bg-phonix-gold/50" style="animation-delay: 1.5s"></div>
+                    <div class="relative z-10">
+                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center mb-4">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                            </svg>
+                        </div>
+                        <h3 class="font-display font-bold text-xl mb-2 uppercase">4. Haptic Feedback</h3>
+                        <p class="text-sm text-gray-400">Phone vibrates with phoneme patterns. Laryngeal haptics simulate throat sensation.</p>
+                        <div class="mt-4 flex items-center gap-2">
+                            <div class="relative">
+                                <div class="w-8 h-8 rounded-full border-2 border-phonix-copper/40 animate-ping absolute"></div>
+                                <div class="w-8 h-8 rounded-full bg-phonix-copper/20 flex items-center justify-center relative">
+                                    <div class="w-2 h-2 rounded-full bg-phonix-copper animate-vibrate"></div>
+                                </div>
+                            </div>
+                            <span class="text-xs text-green-400 font-bold">Active</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Connection Lines -->
+            <div class="hidden md:block absolute top-1/2 left-0 w-full -translate-y-1/2 pointer-events-none opacity-20">
+                <svg class="w-full h-20" viewBox="0 0 1200 100" preserveAspectRatio="none">
+                    <path d="M 100 50 Q 300 50 400 50 T 700 50 T 1000 50" stroke="url(#lineGrad)" stroke-width="2" fill="none" stroke-dasharray="5,5" class="animate-pulse"/>
+                    <defs>
+                        <linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" style="stop-color:#B87333;stop-opacity:1" />
+                            <stop offset="50%" style="stop-color:#D4A574;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#B87333;stop-opacity:1" />
+                        </linearGradient>
+                    </defs>
+                </svg>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Grid -->
+    <section id="technology" class="relative py-32">
+        <div class="content-layer max-w-7xl mx-auto px-6">
+            <div class="grid lg:grid-cols-2 gap-16 items-center mb-32">
+                <div class="space-y-6">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-phonix-copper/10 border border-phonix-copper/20 text-phonix-gold text-xs font-black uppercase tracking-widest">
+                        Lip Reading AI
+                    </div>
+                    <h2 class="text-huge font-black leading-tight">
+                        See What You<br><span class="text-outline-copper">Say</span>
+                    </h2>
+                    <p class="text-gray-400 text-lg leading-relaxed">
+                        Our Gemini 2.0 Flash Vision integration analyzes lip movements in real-time, converting visual speech into text with 98% accuracy. The AI detects phonemes, confidence scores, and mouth states instantly.
+                    </p>
+                    <ul class="space-y-4">
+                        <li class="flex items-start gap-3">
+                            <div class="w-6 h-6 rounded-full bg-phonix-copper/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <svg class="w-3 h-3 text-phonix-copper" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                </svg>
+                            </div>
+                            <span class="text-gray-300">Real-time lip landmark detection with MediaPipe</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <div class="w-6 h-6 rounded-full bg-phonix-copper/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <svg class="w-3 h-3 text-phonix-copper" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                </svg>
+                            </div>
+                            <span class="text-gray-300">Gemini 2.0 Flash Vision for text extraction</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <div class="w-6 h-6 rounded-full bg-phonix-copper/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <svg class="w-3 h-3 text-phonix-copper" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                </svg>
+                            </div>
+                            <span class="text-gray-300">Mouth state detection: closed, open, talking</span>
+                        </li>
+                    </ul>
+                </div>
+                
+                <!-- Visual Representation -->
+                <div class="relative group hover-target">
+                    <div class="absolute inset-0 bg-gradient-to-r from-phonix-copper/30 to-phonix-gold/30 rounded-3xl blur-3xl group-hover:blur-2xl transition-all duration-500"></div>
+                    <div class="relative glass-panel rounded-3xl p-8 border border-white/10 transform transition-transform duration-500 group-hover:scale-[1.02]">
+                        <div class="aspect-video bg-black rounded-2xl overflow-hidden relative">
+                            <div class="absolute inset-0 bg-gradient-to-br from-gray-900 to-black">
+                                <svg class="absolute inset-0 w-full h-full" viewBox="0 0 400 300">
+                                    <defs>
+                                        <linearGradient id="faceGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                            <stop offset="0%" style="stop-color:#D4A574;stop-opacity:0.8" />
+                                            <stop offset="100%" style="stop-color:#B87333;stop-opacity:0.4" />
+                                        </linearGradient>
+                                    </defs>
+                                    <ellipse cx="200" cy="150" rx="100" ry="120" fill="none" stroke="url(#faceGrad)" stroke-width="1.5" opacity="0.6"/>
+                                    <rect x="150" y="180" width="100" height="50" rx="25" fill="none" stroke="#D4A574" stroke-width="2" stroke-dasharray="5,5" class="animate-pulse"/>
+                                    <g class="landmarks">
+                                        <circle cx="160" cy="200" r="4" fill="#D4A574">
+                                            <animate attributeName="opacity" values="1;0.5;1" dur="2s" repeatCount="indefinite"/>
+                                        </circle>
+                                        <circle cx="200" cy="210" r="4" fill="#D4A574">
+                                            <animate attributeName="opacity" values="1;0.5;1" dur="2s" begin="0.3s" repeatCount="indefinite"/>
+                                        </circle>
+                                        <circle cx="240" cy="200" r="4" fill="#D4A574">
+                                            <animate attributeName="opacity" values="1;0.5;1" dur="2s" begin="0.6s" repeatCount="indefinite"/>
+                                        </circle>
+                                    </g>
+                                </svg>
+                                
+                                <div class="absolute top-4 left-4 px-3 py-1.5 rounded-lg bg-black/60 backdrop-blur border border-white/10">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                                        <span class="text-xs font-mono text-gray-300">LIP_READING_ACTIVE</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="absolute bottom-4 left-4 right-4">
+                                    <div class="glass-panel rounded-lg p-3 border border-phonix-copper/30">
+                                        <div class="text-xs text-phonix-gold mb-1 font-bold">Detected:</div>
+                                        <div class="text-white font-mono text-sm">"Hello, I am practicing"</div>
+                                        <div class="flex items-center gap-2 mt-2">
+                                            <div class="h-1 flex-1 bg-gray-800 rounded-full overflow-hidden">
+                                                <div class="h-full w-[98%] bg-gradient-to-r from-phonix-copper to-phonix-gold rounded-full"></div>
+                                            </div>
+                                            <span class="text-xs text-phonix-gold font-bold">98%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Haptic Feedback Feature -->
+            <div class="grid lg:grid-cols-2 gap-16 items-center mb-32">
+                <div class="order-2 lg:order-1 relative group hover-target">
+                    <div class="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-3xl blur-3xl"></div>
+                    <div class="relative glass-panel rounded-3xl p-8 border border-white/10">
+                        <div class="grid grid-cols-3 gap-4">
+                            <div class="bg-black/40 rounded-xl p-4 border border-white/5 hover:border-phonix-copper/50 transition-all duration-300 cursor-pointer hover:bg-phonix-copper/10">
+                                <div class="text-phonix-gold text-2xl font-black mb-2">/æ/</div>
+                                <div class="text-xs text-gray-500 mb-3 font-bold uppercase">Cat vowel</div>
+                                <div class="flex items-end gap-1 h-12">
+                                    <div class="flex-1 bg-phonix-copper/40 rounded-t phoneme-bar" style="height: 80%"></div>
+                                    <div class="flex-1 bg-phonix-copper/60 rounded-t phoneme-bar" style="height: 40%; animation-delay: 0.1s"></div>
+                                    <div class="flex-1 bg-phonix-copper/40 rounded-t phoneme-bar" style="height: 80%; animation-delay: 0.2s"></div>
+                                </div>
+                                <div class="mt-2 text-[10px] text-gray-600 font-mono">[100,50,100]</div>
+                            </div>
+                            
+                            <div class="bg-black/40 rounded-xl p-4 border border-white/5 hover:border-phonix-copper/50 transition-all duration-300 cursor-pointer hover:bg-phonix-copper/10">
+                                <div class="text-phonix-gold text-2xl font-black mb-2">/t/</div>
+                                <div class="text-xs text-gray-500 mb-3 font-bold uppercase">Stop</div>
+                                <div class="flex items-end gap-1 h-12">
+                                    <div class="flex-1 bg-blue-500/60 rounded-t phoneme-bar" style="height: 100%"></div>
+                                    <div class="flex-1 bg-blue-500/30 rounded-t phoneme-bar" style="height: 20%; animation-delay: 0.1s"></div>
+                                </div>
+                                <div class="mt-2 text-[10px] text-gray-600 font-mono">[50,30]</div>
+                            </div>
+                            
+                            <div class="bg-black/40 rounded-xl p-4 border border-white/5 hover:border-phonix-copper/50 transition-all duration-300 cursor-pointer hover:bg-phonix-copper/10">
+                                <div class="text-phonix-gold text-2xl font-black mb-2">/z/</div>
+                                <div class="text-xs text-gray-500 mb-3 font-bold uppercase">Buzz</div>
+                                <div class="flex items-end gap-1 h-12">
+                                    <div class="flex-1 bg-purple-500/40 rounded-t phoneme-bar" style="height: 60%"></div>
+                                    <div class="flex-1 bg-purple-500/60 rounded-t phoneme-bar" style="height: 60%; animation-delay: 0.05s"></div>
+                                    <div class="flex-1 bg-purple-500/40 rounded-t phoneme-bar" style="height: 60%; animation-delay: 0.1s"></div>
+                                    <div class="flex-1 bg-purple-500/60 rounded-t phoneme-bar" style="height: 60%; animation-delay: 0.15s"></div>
+                                </div>
+                                <div class="mt-2 text-[10px] text-gray-600 font-mono">[30,30,30,30]</div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-6 p-4 bg-black/40 rounded-xl border border-white/5">
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="text-xs text-gray-400 uppercase tracking-widest font-bold">Laryngeal Haptics</span>
+                                <span class="text-xs text-phonix-gold font-bold animate-pulse">Active</span>
+                            </div>
+                            <div class="flex items-center gap-4">
+                                <div class="flex-1 h-16 bg-gray-900 rounded-lg overflow-hidden relative">
+                                    <div class="absolute inset-0 flex items-center justify-center">
+                                        <div class="w-full h-px bg-phonix-copper/30"></div>
+                                    </div>
+                                    <svg class="absolute inset-0 w-full h-full" preserveAspectRatio="none">
+                                        <path d="M0,32 Q50,10 100,32 T200,32 T300,32 T400,32" stroke="#D4A574" stroke-width="2" fill="none" class="animate-pulse">
+                                            <animate attributeName="d" 
+                                                values="M0,32 Q50,10 100,32 T200,32 T300,32 T400,32;
+                                                        M0,32 Q50,54 100,32 T200,32 T300,32 T400,32;
+                                                        M0,32 Q50,10 100,32 T200,32 T300,32 T400,32" 
+                                                dur="2s" 
+                                                repeatCount="indefinite"/>
+                                        </path>
+                                    </svg>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-2xl font-black text-white">120<span class="text-sm text-gray-500">Hz</span></div>
+                                    <div class="text-xs text-gray-500">Pitch</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="order-1 lg:order-2 space-y-6">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-xs font-black uppercase tracking-widest">
+                        8D Haptic Engine
+                    </div>
+                    <h2 class="text-huge font-black leading-tight">
+                        Feel Every<br><span class="text-outline-copper">Phoneme</span>
+                    </h2>
+                    <p class="text-gray-400 text-lg leading-relaxed">
+                        Our proprietary haptic engine translates speech into tactile feedback. Vowels buzz long, consonants tap short, and pitch becomes throat vibration. Feel the difference between /æ/ and /ɑ/ through your fingertips.
+                    </p>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="glass-panel rounded-xl p-4 border border-white/5 hover:border-phonix-copper/30 transition-colors">
+                            <div class="text-phonix-gold font-black text-3xl mb-1">50+</div>
+                            <div class="text-sm text-gray-400">Unique patterns</div>
+                        </div>
+                        <div class="glass-panel rounded-xl p-4 border border-white/5 hover:border-phonix-copper/30 transition-colors">
+                            <div class="text-phonix-gold font-black text-3xl mb-1">20Hz</div>
+                            <div class="text-sm text-gray-400">Update rate</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Dashboard Preview -->
+    <section id="dashboard" class="relative py-32 overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-b from-transparent via-phonix-copper/5 to-transparent"></div>
+        <div class="content-layer max-w-7xl mx-auto px-6">
+            <div class="text-center mb-16">
+                <h2 class="text-huge font-black mb-6">Dashboard</h2>
+                <p class="text-gray-400 max-w-2xl mx-auto text-lg">Real-time monitoring, lesson control, and AI-powered insights for educators.</p>
+            </div>
+
+            <div class="relative max-w-6xl mx-auto group hover-target">
+                <div class="absolute -inset-4 bg-gradient-to-r from-phonix-copper/30 via-phonix-gold/30 to-phonix-copper/30 rounded-3xl blur-2xl opacity-50 group-hover:opacity-70 transition-opacity duration-500"></div>
+                <div class="relative glass-panel rounded-2xl border border-white/10 overflow-hidden shadow-2xl">
+                    <div class="bg-gray-900 border-b border-white/5 px-4 py-3 flex items-center gap-2">
+                        <div class="flex gap-1.5">
+                            <div class="w-3 h-3 rounded-full bg-red-500/80"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-500/80"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-500/80"></div>
+                        </div>
+                        <div class="flex-1 mx-4">
+                            <div class="bg-black/50 rounded-md px-3 py-1.5 text-xs text-gray-500 text-center font-mono">localhost:3000/dashboard</div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-gray-950 p-6 grid grid-cols-12 gap-4 min-h-[600px]">
+                        <div class="col-span-2 space-y-2">
+                            <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-phonix-copper/20 text-phonix-gold">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path>
+                                </svg>
+                                <span class="text-xs font-medium">Overview</span>
+                            </div>
+                            <div class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-400 hover:bg-white/5 transition-colors">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                                </svg>
+                                <span class="text-xs font-medium">Students</span>
+                            </div>
+                        </div>
+
+                        <div class="col-span-7 space-y-4">
+                            <div class="bg-black rounded-xl overflow-hidden border border-white/10 relative aspect-video">
+                                <div class="absolute inset-0 bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
+                                    <div class="text-center">
+                                        <div class="w-16 h-16 rounded-full bg-phonix-copper/20 flex items-center justify-center mx-auto mb-2 animate-pulse">
+                                            <svg class="w-8 h-8 text-phonix-copper" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                            </svg>
+                                        </div>
+                                        <span class="text-sm text-gray-500">Live Feed Active</span>
+                                    </div>
+                                </div>
+                                <div class="absolute top-4 left-4 px-2 py-1 bg-green-500/20 border border-green-500/30 rounded text-[10px] text-green-400 font-mono">LIVE</div>
+                                <div class="absolute bottom-4 right-4 px-2 py-1 bg-black/60 backdrop-blur rounded border border-white/10 text-[10px] text-gray-400">Latency: 24ms</div>
+                            </div>
+
+                            <div class="bg-black/40 rounded-xl p-4 border border-white/5">
+                                <div class="flex items-center justify-between mb-3">
+                                    <span class="text-xs text-gray-400 uppercase tracking-wider font-bold">Phoneme Timeline</span>
+                                    <div class="flex gap-2">
+                                        <button class="p-1.5 rounded bg-phonix-copper/20 text-phonix-gold hover:bg-phonix-copper/30 transition-colors">
+                                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="h-12 flex items-end gap-1">
+                                    <div class="flex-1 bg-phonix-copper/30 rounded-t phoneme-bar" style="height: 40%"></div>
+                                    <div class="flex-1 bg-phonix-copper/50 rounded-t phoneme-bar" style="height: 60%; animation-delay: 0.1s"></div>
+                                    <div class="flex-1 bg-phonix-copper/70 rounded-t phoneme-bar" style="height: 80%; animation-delay: 0.2s"></div>
+                                    <div class="flex-1 bg-phonix-copper rounded-t phoneme-bar" style="height: 100%; animation-delay: 0.3s"></div>
+                                    <div class="flex-1 bg-blue-500/50 rounded-t phoneme-bar" style="height: 50%; animation-delay: 0.4s"></div>
+                                    <div class="flex-1 bg-blue-500/70 rounded-t phoneme-bar" style="height: 70%; animation-delay: 0.5s"></div>
+                                    <div class="flex-1 bg-purple-500/50 rounded-t phoneme-bar" style="height: 60%; animation-delay: 0.6s"></div>
+                                    <div class="flex-1 bg-phonix-copper/40 rounded-t phoneme-bar" style="height: 40%; animation-delay: 0.7s"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-span-3 space-y-4">
+                            <div class="bg-black/40 rounded-xl p-4 border border-white/5">
+                                <h4 class="text-xs text-gray-400 uppercase tracking-wider font-bold mb-3">Lip Reading AI</h4>
+                                <div class="space-y-2">
+                                    <div class="p-2 rounded bg-white/5 border border-white/5">
+                                        <div class="text-xs text-gray-500 mb-1">Detected:</div>
+                                        <div class="text-sm text-white font-bold">"Practice"</div>
+                                        <div class="flex items-center gap-1 mt-1">
+                                            <div class="flex-1 h-1 bg-gray-800 rounded-full overflow-hidden">
+                                                <div class="h-full w-[95%] bg-green-500 rounded-full"></div>
+                                            </div>
+                                            <span class="text-[10px] text-green-400 font-bold">95%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="bg-black/40 rounded-xl p-4 border border-white/5">
+                                <h4 class="text-xs text-gray-400 uppercase tracking-wider font-bold mb-3">Haptic Events</h4>
+                                <div class="space-y-1 font-mono text-[10px]">
+                                    <div class="flex items-center gap-2 text-phonix-gold">
+                                        <span class="w-1 h-1 rounded-full bg-phonix-gold animate-pulse"></span>
+                                        <span>Vowel /æ/ triggered</span>
+                                    </div>
+                                    <div class="flex items-center gap-2 text-gray-500">
+                                        <span class="w-1 h-1 rounded-full bg-gray-500"></span>
+                                        <span>Pattern: [100,50,100]</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="relative py-32 overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-t from-phonix-copper/10 to-transparent"></div>
+        <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div class="w-[600px] h-[600px] border border-phonix-copper/20 rounded-full animate-pulse"></div>
+            <div class="absolute w-[400px] h-[400px] border border-phonix-gold/20 rounded-full animate-pulse" style="animation-delay: 0.5s"></div>
+        </div>
+        
+        <div class="content-layer max-w-4xl mx-auto px-6 text-center relative z-10">
+            <h2 class="text-huge font-black mb-8 leading-tight">
+                Ready to <span class="gradient-text">Feel</span> the<br>Future of Speech?
+            </h2>
+            <p class="text-xl text-gray-400 mb-12 max-w-2xl mx-auto">
+                Join the revolution in pronunciation learning. Experience the power of AI lip-reading and haptic feedback technology.
+            </p>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <button class="btn-magnetic text-lg px-10 py-5 hover-target" onclick="enterImmersive()">
+                    <span>Start Free Trial</span>
+                </button>
+                <button class="px-8 py-5 glass-panel text-white font-bold uppercase tracking-widest rounded-full hover:bg-white/5 transition-all border border-white/10 hover-target">
+                    View Documentation
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="relative border-t border-white/5 bg-black/50 backdrop-blur-xl">
+        <div class="max-w-7xl mx-auto px-6 py-12">
+            <div class="grid md:grid-cols-4 gap-8 mb-8">
+                <div class="col-span-2">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-phonix-copper to-phonix-gold flex items-center justify-center">
+                            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path>
+                            </svg>
+                        </div>
+                        <span class="font-display font-bold text-2xl tracking-tight text-white">
+                            Haptic<span class="text-phonix-copper">Phonix</span>
+                        </span>
+                    </div>
+                    <p class="text-gray-500 text-sm max-w-sm">
+                        Revolutionary speech learning technology combining AI lip-reading, real-time phoneme analysis, and 8D haptic feedback.
+                    </p>
+                </div>
+                <div>
+                    <h4 class="font-bold text-white mb-4 uppercase tracking-widest text-xs">Product</h4>
+                    <ul class="space-y-2 text-sm text-gray-500">
+                        <li><a href="#" class="hover:text-phonix-gold transition-colors hover-target">Features</a></li>
+                        <li><a href="#" class="hover:text-phonix-gold transition-colors hover-target">Lessons</a></li>
+                        <li><a href="#" class="hover:text-phonix-gold transition-colors hover-target">Dashboard</a></li>
+                        <li><a href="#" class="hover:text-phonix-gold transition-colors hover-target">API</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-bold text-white mb-4 uppercase tracking-widest text-xs">Resources</h4>
+                    <ul class="space-y-2 text-sm text-gray-500">
+                        <li><a href="#" class="hover:text-phonix-gold transition-colors hover-target">Documentation</a></li>
+                        <li><a href="#" class="hover:text-phonix-gold transition-colors hover-target">GitHub</a></li>
+                        <li><a href="#" class="hover:text-phonix-gold transition-colors hover-target">Research</a></li>
+                        <li><a href="#" class="hover:text-phonix-gold transition-colors hover-target">Support</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
+                <p class="text-xs text-gray-600 font-mono">© 2026 HapticPhonix (CHD). All rights reserved.</p>
+                <div class="flex gap-6">
+                    <a href="#" class="text-gray-600 hover:text-phonix-gold transition-colors hover-target">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                    </a>
+                    <a href="#" class="text-gray-600 hover:text-phonix-gold transition-colors hover-target">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"/></svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // ==========================================
+        // THREE.JS VISUAL SYSTEM - DRAMATIC VERSION
+        // ==========================================
+        const canvas = document.getElementById('webgl');
+        const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.z = 30;
+        
+        // Multi-layered particle system with copper/gold colors
+        const particleSystems = [];
+        
+        // Color palette
+        const copperColor = new THREE.Color(0xB87333);
+        const goldColor = new THREE.Color(0xD4A574);
+        const creamColor = new THREE.Color(0xF5F1E8);
+        
+        // Layer 1: Background slow drift (dark copper)
+        const bgGeometry = new THREE.BufferGeometry();
+        const bgCount = 800;
+        const bgPositions = new Float32Array(bgCount * 3);
+        const bgVelocities = [];
+        
+        for (let i = 0; i < bgCount; i++) {
+            bgPositions[i * 3] = (Math.random() - 0.5) * 100;
+            bgPositions[i * 3 + 1] = (Math.random() - 0.5) * 100;
+            bgPositions[i * 3 + 2] = (Math.random() - 0.5) * 50;
+            bgVelocities.push({
+                x: (Math.random() - 0.5) * 0.02,
+                y: (Math.random() - 0.5) * 0.02,
+                z: (Math.random() - 0.5) * 0.02
+            });
+        }
+        
+        bgGeometry.setAttribute('position', new THREE.BufferAttribute(bgPositions, 3));
+        const bgMaterial = new THREE.PointsMaterial({
+            color: 0x3d2817,
+            size: 0.15,
+            transparent: true,
+            opacity: 0.6
+        });
+        const bgParticles = new THREE.Points(bgGeometry, bgMaterial);
+        scene.add(bgParticles);
+        particleSystems.push({ mesh: bgParticles, velocities: bgVelocities, speed: 0.5 });
+        
+        // Layer 2: Midground turbulent flow (copper/gold mix)
+        const midGeometry = new THREE.BufferGeometry();
+        const midCount = 400;
+        const midPositions = new Float32Array(midCount * 3);
+        const midColors = new Float32Array(midCount * 3);
+        const midVelocities = [];
+        
+        for (let i = 0; i < midCount; i++) {
+            const theta = Math.random() * Math.PI * 2;
+            const radius = 10 + Math.random() * 20;
+            midPositions[i * 3] = Math.cos(theta) * radius;
+            midPositions[i * 3 + 1] = Math.sin(theta) * radius;
+            midPositions[i * 3 + 2] = (Math.random() - 0.5) * 20;
+            
+            const color = Math.random() > 0.5 ? copperColor : goldColor;
+            midColors[i * 3] = color.r;
+            midColors[i * 3 + 1] = color.g;
+            midColors[i * 3 + 2] = color.b;
+            
+            midVelocities.push({
+                angle: theta,
+                radius: radius,
+                speed: 0.002 + Math.random() * 0.003,
+                yOffset: Math.random() * 100
+            });
+        }
+        
+        midGeometry.setAttribute('position', new THREE.BufferAttribute(midPositions, 3));
+        midGeometry.setAttribute('color', new THREE.BufferAttribute(midColors, 3));
+        const midMaterial = new THREE.PointsMaterial({
+            size: 0.25,
+            vertexColors: true,
+            transparent: true,
+            opacity: 0.8
+        });
+        const midParticles = new THREE.Points(midGeometry, midMaterial);
+        scene.add(midParticles);
+        particleSystems.push({ mesh: midParticles, velocities: midVelocities, speed: 1, turbulent: true });
+        
+        // Layer 3: Foreground aggressive motion (bright gold)
+        const fgGeometry = new THREE.BufferGeometry();
+        const fgCount = 150;
+        const fgPositions = new Float32Array(fgCount * 3);
+        const fgVelocities = [];
+        
+        for (let i = 0; i < fgCount; i++) {
+            fgPositions[i * 3] = (Math.random() - 0.5) * 40;
+            fgPositions[i * 3 + 1] = (Math.random() - 0.5) * 40;
+            fgPositions[i * 3 + 2] = (Math.random() - 0.5) * 20;
+            fgVelocities.push({
+                x: (Math.random() - 0.5) * 0.1,
+                y: (Math.random() - 0.5) * 0.1,
+                z: (Math.random() - 0.5) * 0.1,
+                chaos: Math.random()
+            });
+        }
+        
+        fgGeometry.setAttribute('position', new THREE.BufferAttribute(fgPositions, 3));
+        const fgMaterial = new THREE.PointsMaterial({
+            color: 0xD4A574,
+            size: 0.5,
+            transparent: true,
+            opacity: 0.9
+        });
+        const fgParticles = new THREE.Points(fgGeometry, fgMaterial);
+        scene.add(fgParticles);
+        particleSystems.push({ mesh: fgParticles, velocities: fgVelocities, speed: 2, chaotic: true });
+        
+        // Layer 4: Connecting lines (gold constellation)
+        const lineGeometry = new THREE.BufferGeometry();
+        const lineCount = 200;
+        const linePositions = new Float32Array(lineCount * 6);
+        lineGeometry.setAttribute('position', new THREE.BufferAttribute(linePositions, 3));
+        
+        const lineMaterial = new THREE.LineBasicMaterial({
+            color: 0xD4A574,
+            transparent: true,
+            opacity: 0.1
+        });
+        
+        const lines = new THREE.LineSegments(lineGeometry, lineMaterial);
+        scene.add(lines);
+        
+        // Dramatic lighting
+        const ambientLight = new THREE.AmbientLight(0x404040, 2);
+        scene.add(ambientLight);
+        
+        const pointLight1 = new THREE.PointLight(0xB87333, 2, 50);
+        pointLight1.position.set(10, 10, 10);
+        scene.add(pointLight1);
+        
+        const pointLight2 = new THREE.PointLight(0xD4A574, 1, 50);
+        pointLight2.position.set(-10, -10, 10);
+        scene.add(pointLight2);
+        
+        // Mouse tracking
+        let mouseX = 0, mouseY = 0;
+        let targetX = 0, targetY = 0;
+        
+        document.addEventListener('mousemove', (e) => {
+            mouseX = (e.clientX / window.innerWidth - 0.5) * 2;
+            mouseY = (e.clientY / window.innerHeight - 0.5) * 2;
+        });
+        
+        // Scroll velocity
+        let scrollVelocity = 0;
+        let lastScroll = 0;
+        
+        window.addEventListener('scroll', () => {
+            scrollVelocity = Math.abs(window.scrollY - lastScroll) * 0.01;
+            lastScroll = window.scrollY;
+        }, { passive: true });
+        
+        // Animation loop
+        let time = 0;
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            time += 0.01;
+            
+            // Update each particle system
+            particleSystems.forEach((system, idx) => {
+                const positions = system.mesh.geometry.attributes.position.array;
+                
+                for (let i = 0; i < positions.length / 3; i++) {
+                    const v = system.velocities[i];
+                    
+                    if (system.turbulent) {
+                        v.angle += v.speed * (1 + scrollVelocity);
+                        const turbulence = Math.sin(time + v.yOffset) * 2;
+                        positions[i * 3] = Math.cos(v.angle) * (v.radius + turbulence);
+                        positions[i * 3 + 1] = Math.sin(v.angle) * (v.radius + turbulence) + Math.sin(time * 2 + i) * 0.5;
+                        positions[i * 3 + 2] += Math.sin(time + i) * 0.02;
+                    } else if (system.chaotic) {
+                        const dx = positions[i * 3] - mouseX * 20;
+                        const dy = positions[i * 3 + 1] - mouseY * 20;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        
+                        if (dist < 10) {
+                            positions[i * 3] += dx * 0.05;
+                            positions[i * 3 + 1] += dy * 0.05;
+                        }
+                        
+                        positions[i * 3] += v.x * (1 + scrollVelocity * 5) + Math.sin(time * 3 + i) * 0.02;
+                        positions[i * 3 + 1] += v.y * (1 + scrollVelocity * 5) + Math.cos(time * 2 + i) * 0.02;
+                        positions[i * 3 + 2] += v.z;
+                        
+                        if (Math.abs(positions[i * 3]) > 30) positions[i * 3] *= -0.9;
+                        if (Math.abs(positions[i * 3 + 1]) > 30) positions[i * 3 + 1] *= -0.9;
+                    } else {
+                        positions[i * 3] += v.x * system.speed;
+                        positions[i * 3 + 1] += v.y * system.speed;
+                        positions[i * 3 + 2] += v.z * system.speed;
+                        
+                        if (Math.abs(positions[i * 3]) > 50) positions[i * 3] *= -1;
+                        if (Math.abs(positions[i * 3 + 1]) > 50) positions[i * 3 + 1] *= -1;
+                    }
+                }
+                
+                system.mesh.geometry.attributes.position.needsUpdate = true;
+                system.mesh.rotation.y += 0.0001 * system.speed;
+            });
+            
+            // Update constellation lines
+            const linePositions = lines.geometry.attributes.position.array;
+            let lineIdx = 0;
+            const fgPos = fgParticles.geometry.attributes.position.array;
+            
+            for (let i = 0; i < Math.min(fgCount, 40); i++) {
+                for (let j = i + 1; j < Math.min(fgCount, 40); j++) {
+                    if (lineIdx >= linePositions.length - 6) break;
+                    
+                    const dx = fgPos[i * 3] - fgPos[j * 3];
+                    const dy = fgPos[i * 3 + 1] - fgPos[j * 3 + 1];
+                    const dz = fgPos[i * 3 + 2] - fgPos[j * 3 + 2];
+                    const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+                    
+                    if (dist < 8) {
+                        linePositions[lineIdx++] = fgPos[i * 3];
+                        linePositions[lineIdx++] = fgPos[i * 3 + 1];
+                        linePositions[lineIdx++] = fgPos[i * 3 + 2];
+                        linePositions[lineIdx++] = fgPos[j * 3];
+                        linePositions[lineIdx++] = fgPos[j * 3 + 1];
+                        linePositions[lineIdx++] = fgPos[j * 3 + 2];
+                    }
+                }
+            }
+            
+            while (lineIdx < linePositions.length) {
+                linePositions[lineIdx++] = 0;
+            }
+            
+            lines.geometry.attributes.position.needsUpdate = true;
+            lines.rotation.y -= 0.0002;
+            
+            // Camera parallax
+            targetX = mouseX * 5;
+            targetY = mouseY * 5;
+            camera.position.x += (targetX - camera.position.x) * 0.05;
+            camera.position.y += (-targetY - camera.position.y) * 0.05;
+            camera.lookAt(scene.position);
+            
+            // Pulsing lights
+            pointLight1.intensity = 2 + Math.sin(time * 2) * 0.5;
+            pointLight1.position.x = Math.sin(time) * 20;
+            pointLight1.position.z = Math.cos(time) * 20;
+            
+            renderer.render(scene, camera);
+            scrollVelocity *= 0.95;
+        }
+        
+        animate();
+        
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        // ==========================================
+        // CUSTOM CURSOR SYSTEM
+        // ==========================================
+        const cursorMain = document.getElementById('cursor-main');
+        const cursorDot = document.getElementById('cursor-dot');
+        let cursorX = 0, cursorY = 0;
+        
+        document.addEventListener('mousemove', (e) => {
+            cursorDot.style.left = e.clientX + 'px';
+            cursorDot.style.top = e.clientY + 'px';
+            cursorX = e.clientX;
+            cursorY = e.clientY;
+        });
+        
+        function updateCursor() {
+            cursorMain.style.left = cursorX + 'px';
+            cursorMain.style.top = cursorY + 'px';
+            requestAnimationFrame(updateCursor);
+        }
+        updateCursor();
+        
+        document.querySelectorAll('.hover-target').forEach(el => {
+            el.addEventListener('mouseenter', () => cursorMain.classList.add('hover'));
+            el.addEventListener('mouseleave', () => cursorMain.classList.remove('hover'));
+        });
+        
+        // ==========================================
+        // GSAP ANIMATIONS
+        // ==========================================
+        gsap.registerPlugin(ScrollTrigger);
+        
+        // Progress bar
+        gsap.to('#progress', {
+            scaleX: 1,
+            ease: 'none',
+            scrollTrigger: {
+                trigger: 'body',
+                start: 'top top',
+                end: 'bottom bottom',
+                scrub: 0.3
+            }
+        });
+        
+        // Navbar show
+        ScrollTrigger.create({
+            start: 'top -100',
+            end: 99999,
+            toggleClass: { className: 'opacity-100 translate-y-0', targets: '#navbar' }
+        });
+        
+        // Reveal animations
+        gsap.utils.toArray('.reveal-text span').forEach((span, i) => {
+            gsap.from(span, {
+                y: 100,
+                opacity: 0,
+                duration: 1,
+                delay: i * 0.1,
+                ease: 'power4.out',
+                scrollTrigger: {
+                    trigger: span.parentElement,
+                    start: 'top 85%'
+                }
+            });
+        });
+        
+        // Counter animation
+        gsap.utils.toArray('.counter').forEach(counter => {
+            const target = parseInt(counter.getAttribute('data-target'));
+            gsap.to(counter, {
+                innerHTML: target,
+                duration: 2,
+                snap: { innerHTML: 1 },
+                scrollTrigger: {
+                    trigger: counter,
+                    start: 'top 80%'
+                }
+            });
+        });
+        
+        // Magnetic buttons
+        document.querySelectorAll('.btn-magnetic').forEach(btn => {
+            btn.addEventListener('mousemove', (e) => {
+                const rect = btn.getBoundingClientRect();
+                const x = e.clientX - rect.left - rect.width / 2;
+                const y = e.clientY - rect.top - rect.height / 2;
+                btn.style.transform = `translate(${x * 0.3}px, ${y * 0.3}px)`;
+            });
+            
+            btn.addEventListener('mouseleave', () => {
+                btn.style.transform = 'translate(0, 0)';
+            });
+        });
+        
+        // Feature cards 3D tilt
+        document.querySelectorAll('.feature-card').forEach(card => {
+            card.addEventListener('mousemove', (e) => {
+                const rect = card.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                const centerX = rect.width / 2;
+                const centerY = rect.height / 2;
+                const rotateX = (y - centerY) / 20;
+                const rotateY = (centerX - x) / 20;
+                
+                card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-8px) scale(1.02)`;
+            });
+            
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = 'perspective(1000px) rotateX(0) rotateY(0) translateY(0) scale(1)';
+            });
+        });
+        
+        // Initialize system button
+        document.getElementById('init-system').addEventListener('click', function() {
+            const flash = document.createElement('div');
+            flash.className = 'fixed inset-0 bg-phonix-cream z-[9999] pointer-events-none';
+            document.body.appendChild(flash);
+            
+            gsap.to(flash, {
+                opacity: 0,
+                duration: 0.5,
+                onComplete: () => flash.remove()
+            });
+            
+            if (navigator.vibrate) {
+                navigator.vibrate([50, 50, 100, 50, 200]);
+            }
+            
+            const btn = this.querySelector('span');
+            const original = btn.textContent;
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let iterations = 0;
+            
+            const interval = setInterval(() => {
+                btn.textContent = original.split('').map((char, idx) => {
+                    if (idx < iterations) return original[idx];
+                    return chars[Math.floor(Math.random() * chars.length)];
+                }).join('');
+                
+                iterations += 1/3;
+                if (iterations >= original.length) clearInterval(interval);
+            }, 30);
+        });
+        
+        // Enter immersive mode
+        function enterImmersive() {
+            if (document.documentElement.requestFullscreen) {
+                document.documentElement.requestFullscreen();
+            }
+            
+            const overlay = document.createElement('div');
+            overlay.className = 'fixed inset-0 bg-phonix-copper z-[9999] flex items-center justify-center';
+            document.body.appendChild(overlay);
+            
+            gsap.to(overlay, {
+                scaleY: 0,
+                transformOrigin: 'top',
+                duration: 1,
+                ease: 'power4.inOut',
+                onComplete: () => overlay.remove()
+            });
+            
+            if (navigator.vibrate) {
+                navigator.vibrate([100, 100, 100, 100, 500]);
+            }
+        }
+        
+        // Random glitch triggers
+        setInterval(() => {
+            if (Math.random() > 0.95) {
+                const glitch = document.querySelector('.glitch-copper');
+                if (glitch) {
+                    glitch.style.animation = 'none';
+                    glitch.offsetHeight;
+                    glitch.style.animation = '';
+                }
+            }
+        }, 3000);
+        
+        // Smooth scroll
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        });
+        
+        // Haptic feedback on feature cards
+        document.querySelectorAll('.feature-card').forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                if (navigator.vibrate) {
+                    navigator.vibrate([50, 30, 50]);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
