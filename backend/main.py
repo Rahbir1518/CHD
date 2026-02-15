@@ -556,6 +556,13 @@ async def speech_haptic_status():
         "connected_clients": len(speech_haptic_ws_manager.clients),
     }
 # ── Snowflake AI Coaching ──────────────────────────────────────────────────
+
+@app.get("/api/coaching/status")
+async def coaching_status():
+    """Get Snowflake coaching engine status and available models."""
+    return snowflake_coach.get_status()
+
+
 @app.post("/api/coaching-feedback")
 async def get_coaching_feedback(request: Request):
     """
@@ -569,7 +576,8 @@ async def get_coaching_feedback(request: Request):
         "phonemes": ["AH", "EE", "S"],
         "scores": {"AH": 0.85, "EE": 0.62, "S": 0.90},
         "struggles": ["inconsistent pitch", "weak vibration"],
-        "duration": 300  // seconds
+        "duration": 300,
+        "model": "mistral-large"
     }
     """
     try:
@@ -590,7 +598,7 @@ async def get_coaching_feedback(request: Request):
             "focus_areas": feedback.focus_areas,
             "next_steps": feedback.next_steps,
             "model": feedback.model_used,
-            "provider": "snowflake-cortex"
+            "provider": feedback.provider,
         }
         
     except Exception as e:
@@ -604,16 +612,29 @@ async def get_coaching_feedback(request: Request):
 @app.get("/api/phoneme-tip/{phoneme}")
 async def get_phoneme_tip(phoneme: str):
     """
-    Get a quick pronunciation tip for a specific phoneme using Snowflake.
-    Uses the fastest model (Mixtral) for low-latency responses.
+    Get a detailed pronunciation tip for a specific phoneme.
+    Returns curated knowledge base data + optional AI-enhanced tip from Snowflake Cortex.
     """
     try:
-        tip = await snowflake_coach.get_quick_tip(phoneme.upper())
+        tip_data = await snowflake_coach.get_quick_tip(phoneme.upper())
         return {
             "phoneme": phoneme.upper(),
-            "tip": tip,
-            "provider": "snowflake-cortex"
+            "provider": "snowflake-cortex",
+            **tip_data,
         }
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e)}
+        )
+
+
+@app.get("/api/coaching/trends")
+async def get_session_trends():
+    """Analyze trends across practice sessions using Snowflake Cortex."""
+    try:
+        trends = await snowflake_coach.get_session_trends()
+        return trends
     except Exception as e:
         return JSONResponse(
             status_code=500,

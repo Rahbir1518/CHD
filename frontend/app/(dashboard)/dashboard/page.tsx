@@ -9,6 +9,7 @@ import RecordingControls from "@/components/RecordingControls";
 import TranscriptionPanel from "@/components/TranscriptionPanel";
 import LipReadingPanel from "@/components/LipReadingPanel";
 import PitchAnalysisPanel from "@/components/PitchAnalysisPanel";
+import SnowflakeCoaching from "@/components/SnowflakeCoaching";
 import type { RecordedFrame } from "@/lib/storage";
 
 const WaveVisualizer3D = lazy(() => import("@/components/WaveVisualizer3D"));
@@ -268,7 +269,7 @@ export default function DashboardPage() {
   const [isLipAnalyzing, setIsLipAnalyzing] = useState(false);
 
   // UI state
-  const [rightPanelTab, setRightPanelTab] = useState<"controls" | "haptics" | "recording" | "transcribe">("controls");
+  const [rightPanelTab, setRightPanelTab] = useState<"controls" | "haptics" | "recording" | "transcribe" | "coaching">("controls");
 
   const wsRef = useRef<WebSocket | null>(null);
 
@@ -770,6 +771,17 @@ export default function DashboardPage() {
                   >
                     Transcribe
                   </TabButton>
+                  <TabButton
+                    active={rightPanelTab === "coaching"}
+                    onClick={() => setRightPanelTab("coaching")}
+                    icon={
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                      </svg>
+                    }
+                  >
+                    Coach
+                  </TabButton>
                 </div>
               </div>
 
@@ -1037,6 +1049,50 @@ export default function DashboardPage() {
                       setTranslation(t);
                       setTargetLanguage(lang);
                     }}
+                  />
+                </motion.div>
+              )}
+
+              {/* ── AI Coach (Snowflake Cortex) ──────────────────── */}
+              {rightPanelTab === "coaching" && (
+                <motion.div
+                  key="coaching"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.3 }}
+                  className="p-4"
+                >
+                  <SnowflakeCoaching
+                    currentPhoneme={currentPhoneme}
+                    hapticEventCount={hapticLog.length}
+                    isSessionActive={status === "connected"}
+                    sessionData={
+                      hapticLog.length > 0
+                        ? {
+                            phonemes: [...new Set(hapticLog.map((e) => e.phoneme_type?.toUpperCase()).filter(Boolean))],
+                            scores: Object.fromEntries(
+                              [...new Set(hapticLog.map((e) => e.phoneme_type?.toUpperCase()).filter(Boolean))].map(
+                                (p) => {
+                                  const events = hapticLog.filter(
+                                    (e) => e.phoneme_type?.toUpperCase() === p
+                                  );
+                                  const avg =
+                                    events.reduce((sum, e) => sum + (e.confidence || 0), 0) /
+                                    events.length;
+                                  return [p, avg];
+                                }
+                              )
+                            ),
+                            struggles: hapticLog
+                              .filter((e) => e.confidence < 0.6)
+                              .map((e) => `Low confidence on ${e.phoneme_type}`)
+                              .filter((v, i, a) => a.indexOf(v) === i)
+                              .slice(0, 3),
+                            duration: undefined,
+                          }
+                        : undefined
+                    }
                   />
                 </motion.div>
               )}
