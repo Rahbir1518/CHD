@@ -22,11 +22,11 @@ interface LipReadingPanelProps {
   mouthState: string;
 }
 
-const MOUTH_STATE_CONFIG: Record<string, { icon: string; color: string; label: string; bgClass: string }> = {
-  closed: { icon: "😶", color: "text-gray-400", label: "Closed", bgClass: "bg-gray-700" },
-  open:   { icon: "😮", color: "text-yellow-400", label: "Open", bgClass: "bg-yellow-900/30" },
-  talking: { icon: "🗣️", color: "text-green-400", label: "Talking", bgClass: "bg-green-900/30" },
-  unknown: { icon: "❓", color: "text-gray-500", label: "Unknown", bgClass: "bg-gray-800" },
+const MOUTH_STATE_CONFIG: Record<string, { color: string; label: string; bgClass: string; dotColor: string }> = {
+  closed: { color: "text-gray-400", label: "Closed", bgClass: "bg-gray-700", dotColor: "bg-gray-400" },
+  open:   { color: "text-yellow-400", label: "Open", bgClass: "bg-yellow-900/30", dotColor: "bg-yellow-400" },
+  talking: { color: "text-green-400", label: "Talking", bgClass: "bg-green-900/30", dotColor: "bg-green-400" },
+  unknown: { color: "text-gray-500", label: "Unknown", bgClass: "bg-gray-800", dotColor: "bg-gray-500" },
 };
 
 export default function LipReadingPanel({
@@ -42,7 +42,7 @@ export default function LipReadingPanel({
       {/* Mouth State Indicator */}
       <div className={`flex items-center justify-between p-3 rounded-lg border border-gray-700 ${stateConfig.bgClass} transition-colors duration-300`}>
         <div className="flex items-center gap-3">
-          <span className="text-2xl">{stateConfig.icon}</span>
+          <div className={`w-3 h-3 rounded-full ${stateConfig.dotColor}`} />
           <div>
             <div className={`text-sm font-semibold ${stateConfig.color}`}>
               {stateConfig.label}
@@ -62,8 +62,7 @@ export default function LipReadingPanel({
 
       {/* Latest Detection */}
       <div className="bg-gray-900 rounded-xl border border-gray-800 p-4">
-        <h3 className="text-sm font-semibold text-gray-400 mb-3 flex items-center gap-2">
-          <span className="text-base">👄</span>
+        <h3 className="text-sm font-semibold text-gray-400 mb-3">
           Lip Reading Detection
         </h3>
 

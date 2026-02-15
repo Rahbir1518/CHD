@@ -146,7 +146,7 @@ const PhonemeTimeline: React.FC<PhonemeTimelineProps> = ({
 
         {/* Mouth openness bar */}
         <div className="flex items-center gap-2 text-xs text-gray-500">
-          <span>👄</span>
+          <span className="text-gray-400">Mouth</span>
           <div className="w-20 h-2 bg-gray-200 rounded-full overflow-hidden">
             <div
               className="h-full bg-gradient-to-r from-green-400 to-green-600 rounded-full transition-all duration-75"

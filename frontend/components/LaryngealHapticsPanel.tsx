@@ -25,16 +25,15 @@ interface LaryngealHapticsPanelProps {
 const TEST_SOUNDS: Array<{
   key: 'v' | 'm' | 'z' | 'ah' | 'ee' | 'rising' | 'falling';
   label: string;
-  emoji: string;
   color: string;
 }> = [
-  { key: 'v',       label: '"V"',     emoji: '🫦', color: 'bg-purple-600 hover:bg-purple-500' },
-  { key: 'm',       label: '"M"',     emoji: '👃', color: 'bg-indigo-600 hover:bg-indigo-500' },
-  { key: 'z',       label: '"Z"',     emoji: '🐝', color: 'bg-yellow-600 hover:bg-yellow-500' },
-  { key: 'ah',      label: '"AH"',    emoji: '😮', color: 'bg-red-600 hover:bg-red-500' },
-  { key: 'ee',      label: '"EE"',    emoji: '😁', color: 'bg-sky-600 hover:bg-sky-500' },
-  { key: 'rising',  label: 'Rise ↑',  emoji: '📈', color: 'bg-emerald-600 hover:bg-emerald-500' },
-  { key: 'falling', label: 'Fall ↓',  emoji: '📉', color: 'bg-orange-600 hover:bg-orange-500' },
+  { key: 'v',       label: '"V"',     color: 'bg-purple-600 hover:bg-purple-500' },
+  { key: 'm',       label: '"M"',     color: 'bg-indigo-600 hover:bg-indigo-500' },
+  { key: 'z',       label: '"Z"',     color: 'bg-yellow-600 hover:bg-yellow-500' },
+  { key: 'ah',      label: '"AH"',    color: 'bg-red-600 hover:bg-red-500' },
+  { key: 'ee',      label: '"EE"',    color: 'bg-sky-600 hover:bg-sky-500' },
+  { key: 'rising',  label: 'Rise \u2191',  color: 'bg-emerald-600 hover:bg-emerald-500' },
+  { key: 'falling', label: 'Fall \u2193',  color: 'bg-orange-600 hover:bg-orange-500' },
 ];
 
 // ── Throat Visualization (canvas) ────────────────────────────────────────────
@@ -174,7 +173,7 @@ const LaryngealHapticsPanel: React.FC<LaryngealHapticsPanelProps> = ({
             state.isVibrating ? 'bg-purple-400 animate-pulse' : enabled ? 'bg-slate-500' : 'bg-red-500'
           }`} />
           <h3 className="font-semibold text-sm text-slate-200">
-            📳 Laryngeal Haptic Feedback
+            Laryngeal Haptic Feedback
           </h3>
           {state.isVibrating && (
             <span className="text-[10px] bg-purple-900/50 text-purple-300 px-2 py-0.5 rounded-full font-mono border border-purple-500/30">
@@ -206,7 +205,7 @@ const LaryngealHapticsPanel: React.FC<LaryngealHapticsPanelProps> = ({
       {/* Not supported warning */}
       {!isSupported && (
         <div className="px-4 py-2 bg-amber-900/30 border-b border-amber-500/20 text-amber-400 text-xs">
-          ⚠️ Vibration API not supported on this device. Use Android Chrome for haptic feedback.
+          Vibration API not supported on this device. Use Android Chrome for haptic feedback.
         </div>
       )}
 
@@ -292,7 +291,6 @@ const LaryngealHapticsPanel: React.FC<LaryngealHapticsPanelProps> = ({
                 disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 flex flex-col items-center gap-0.5`}
               title={getTestSoundDescription(sound.key)}
             >
-              <span className="text-base">{sound.emoji}</span>
               <span>{sound.label}</span>
             </button>
           ))}

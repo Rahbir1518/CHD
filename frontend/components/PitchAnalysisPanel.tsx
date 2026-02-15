@@ -18,12 +18,12 @@ function classifyPitch(hz: number): { label: string; color: string } {
   return { label: 'High', color: 'text-orange-400' };
 }
 
-function stabilityLabel(std: number): { label: string; color: string; emoji: string } {
-  if (std < 5) return { label: 'Very Stable', color: 'text-emerald-400', emoji: '🎯' };
-  if (std < 15) return { label: 'Stable', color: 'text-green-400', emoji: '✅' };
-  if (std < 40) return { label: 'Moderate', color: 'text-yellow-400', emoji: '〰️' };
-  if (std < 80) return { label: 'Unstable', color: 'text-orange-400', emoji: '📈' };
-  return { label: 'Very Unstable', color: 'text-red-400', emoji: '⚡' };
+function stabilityLabel(std: number): { label: string; color: string } {
+  if (std < 5) return { label: 'Very Stable', color: 'text-emerald-400' };
+  if (std < 15) return { label: 'Stable', color: 'text-green-400' };
+  if (std < 40) return { label: 'Moderate', color: 'text-yellow-400' };
+  if (std < 80) return { label: 'Unstable', color: 'text-orange-400' };
+  return { label: 'Very Unstable', color: 'text-red-400' };
 }
 
 function formatHz(hz: number): string {
@@ -42,11 +42,9 @@ const StatCard: React.FC<{
   value: string;
   sub?: string;
   color?: string;
-  icon?: string;
-}> = ({ label, value, sub, color = 'text-white', icon }) => (
+}> = ({ label, value, sub, color = 'text-white' }) => (
   <div className="bg-slate-800/60 rounded-lg p-3 flex flex-col gap-0.5 min-w-0">
     <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold truncate">
-      {icon && <span className="mr-1">{icon}</span>}
       {label}
     </span>
     <span className={`text-lg font-bold font-mono leading-tight truncate ${color}`}>{value}</span>
@@ -133,7 +131,7 @@ const PitchAnalysisPanel: React.FC = () => {
         <div className="flex items-center gap-2">
           <div className={`w-2 h-2 rounded-full ${isActive ? 'bg-emerald-400 animate-pulse' : 'bg-slate-600'}`} />
           <h3 className="font-semibold text-sm text-slate-200">
-            🎙️ Real-Time Pitch Analysis
+            Real-Time Pitch Analysis
           </h3>
           {isActive && currentFrame && (
             <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full font-mono">
@@ -175,7 +173,7 @@ const PitchAnalysisPanel: React.FC = () => {
                 : 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-600/30'
             } ${isStarting ? 'opacity-50 cursor-wait' : ''}`}
           >
-            {isStarting ? 'Starting...' : isActive ? '⏹ Stop' : '🎙️ Start Mic'}
+            {isStarting ? 'Starting...' : isActive ? 'Stop' : 'Start Mic'}
           </button>
         </div>
       </div>
@@ -183,7 +181,7 @@ const PitchAnalysisPanel: React.FC = () => {
       {/* ── Error ───────────────────────────────────────────────────────── */}
       {error && (
         <div className="px-4 py-2 bg-red-900/30 border-b border-red-500/20 text-red-400 text-xs">
-          ⚠️ {error}
+          {error}
         </div>
       )}
 
@@ -196,25 +194,22 @@ const PitchAnalysisPanel: React.FC = () => {
               value={formatHz(currentFrame.pitch)}
               sub={currentFrame.noteName ?? '—'}
               color={currentFrame.voiced ? 'text-sky-400' : 'text-slate-600'}
-              icon="🎵"
             />
             <StatCard
               label="Tonality"
               value={pitchClass.label}
               sub={`Confidence: ${(currentFrame.confidence * 100).toFixed(0)}%`}
               color={pitchClass.color}
-              icon="🎼"
             />
             <StatCard
               label="Voice"
               value={currentFrame.voiced ? 'Voiced' : 'Unvoiced'}
               sub={`RMS: ${(currentFrame.rms * 100).toFixed(1)}%`}
               color={currentFrame.voiced ? 'text-emerald-400' : 'text-slate-500'}
-              icon={currentFrame.voiced ? '🗣️' : '🔇'}
             />
             <StatCard
               label="Stability"
-              value={`${stability.emoji} ${stability.label}`}
+              value={stability.label}
               sub={`σ = ${currentFrame.pitchStability.toFixed(1)} Hz`}
               color={stability.color}
             />

@@ -94,7 +94,7 @@ export default function SnowflakeCoaching() {
       {/* Error state */}
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4">
-          ⚠️ {error}
+          {error}
         </div>
       )}
 
@@ -104,7 +104,7 @@ export default function SnowflakeCoaching() {
           {/* Encouragement */}
           <div className="bg-green-50 border border-green-200 p-4 rounded-lg">
             <div className="text-xs font-semibold text-green-700 uppercase mb-1">
-              🎉 Great Work
+              Great Work
             </div>
             <div className="text-green-800">{feedback.encouragement}</div>
           </div>
@@ -113,7 +113,7 @@ export default function SnowflakeCoaching() {
           {feedback.focus_areas && feedback.focus_areas.length > 0 && (
             <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
               <div className="text-xs font-semibold text-yellow-700 uppercase mb-2">
-                🎯 Focus On
+                Focus On
               </div>
               <ul className="space-y-2">
                 {feedback.focus_areas.map((area, idx) => (
@@ -130,7 +130,7 @@ export default function SnowflakeCoaching() {
           {feedback.next_steps && feedback.next_steps.length > 0 && (
             <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
               <div className="text-xs font-semibold text-blue-700 uppercase mb-2">
-                📝 Next Practice
+                Next Practice
               </div>
               <ul className="space-y-2">
                 {feedback.next_steps.map((step, idx) => (

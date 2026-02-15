@@ -28,10 +28,10 @@ interface VideoPlayerProps {
   lipReadingText?: string | null;
 }
 
-const MOUTH_STATE_EMOJI: Record<string, string> = {
-  closed: "😶",
-  open: "😮",
-  talking: "🗣️",
+const MOUTH_STATE_LABEL: Record<string, string> = {
+  closed: "Closed",
+  open: "Open",
+  talking: "Talking",
 };
 
 const VideoPlayer: React.FC<VideoPlayerProps> = ({ 
@@ -121,12 +121,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         </div>
         {landmarks.length > 0 && (
           <div className="bg-green-600/70 px-2 py-1 rounded text-xs text-white backdrop-blur-sm animate-pulse">
-            🎯 Tracking
+            Tracking
           </div>
         )}
         {mouthState !== "unknown" && (
           <div className="bg-black/50 px-2 py-1 rounded text-xs text-white backdrop-blur-sm">
-            {MOUTH_STATE_EMOJI[mouthState] || ""} <span className="capitalize">{mouthState}</span>
+            <span className="capitalize">{MOUTH_STATE_LABEL[mouthState] || mouthState}</span>
           </div>
         )}
       </div>
@@ -134,7 +134,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       {/* Lip reading text overlay at top-center */}
       {lipReadingText && (
         <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-indigo-600/80 px-4 py-2 rounded-lg text-sm text-white font-medium backdrop-blur-sm max-w-[80%] text-center shadow-lg animate-in fade-in">
-          👄 &ldquo;{lipReadingText}&rdquo;
+          &ldquo;{lipReadingText}&rdquo;
         </div>
       )}
 

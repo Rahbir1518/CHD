@@ -253,7 +253,7 @@ export default function TranscriptionPanel({
               onClick={startListening}
               className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
             >
-              🎙️ Start Listening
+              Start Listening
             </button>
           ) : (
             <button

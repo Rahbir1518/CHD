@@ -344,12 +344,12 @@ export default function RecordingControls({
                 </div>
                 {rec.transcript && (
                   <div className="text-gray-400 mb-1 truncate">
-                    📝 {rec.transcript}
+                    {rec.transcript}
                   </div>
                 )}
                 {rec.translation && (
                   <div className="text-indigo-400 mb-1 truncate">
-                    🌐 {rec.translation}
+                    {rec.translation}
                   </div>
                 )}
                 <div className="flex gap-2 mt-2">
@@ -365,7 +365,7 @@ export default function RecordingControls({
                     disabled={isPlaying && playbackSessionId === rec.id}
                     className="bg-red-800 hover:bg-red-700 disabled:opacity-40 text-white px-2 py-1.5 rounded text-xs font-medium transition-colors"
                   >
-                    🗑
+                    Del
                   </button>
                 </div>
               </div>
