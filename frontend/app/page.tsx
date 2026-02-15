@@ -8,6 +8,14 @@ import { useRouter } from "next/navigation";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import {
+  motion,
+  useScroll,
+  useTransform,
+  useSpring,
+  useMotionValue,
+  useInView,
+} from "framer-motion";
+import {
   ArrowRight,
   Play,
   ChevronDown,
@@ -30,6 +38,127 @@ const ParticleBackground = dynamic(
 
 gsap.registerPlugin(ScrollTrigger);
 
+/* ─────────── Animation Helpers ─────────── */
+
+function ScrollProgress() {
+  const { scrollYProgress } = useScroll();
+  const scaleX = useSpring(scrollYProgress, {
+    stiffness: 100,
+    damping: 30,
+    restDelta: 0.001,
+  });
+  return (
+    <motion.div
+      className="fixed top-0 left-0 right-0 h-[3px] z-[100] origin-left"
+      style={{
+        scaleX,
+        background: "linear-gradient(90deg, #B87333, #D4A574, #B87333)",
+      }}
+    />
+  );
+}
+
+function CursorGlow() {
+  const x = useMotionValue(-200);
+  const y = useMotionValue(-200);
+  const springX = useSpring(x, { damping: 25, stiffness: 150 });
+  const springY = useSpring(y, { damping: 25, stiffness: 150 });
+
+  useEffect(() => {
+    const move = (e: MouseEvent) => {
+      x.set(e.clientX);
+      y.set(e.clientY);
+    };
+    window.addEventListener("mousemove", move);
+    return () => window.removeEventListener("mousemove", move);
+  }, [x, y]);
+
+  return (
+    <motion.div
+      className="fixed w-[500px] h-[500px] rounded-full pointer-events-none z-[1] hidden lg:block"
+      style={{
+        left: springX,
+        top: springY,
+        translateX: "-50%",
+        translateY: "-50%",
+        background:
+          "radial-gradient(circle, rgba(184,115,51,0.06) 0%, transparent 70%)",
+      }}
+    />
+  );
+}
+
+function AnimatedCounter({
+  value,
+  suffix = "",
+}: {
+  value: number;
+  suffix?: string;
+}) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const isInView = useInView(ref, { once: true, margin: "-80px" });
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    if (!isInView) return;
+    let start = 0;
+    const end = value;
+    const duration = 2000;
+    const step = end / (duration / 16);
+    const t = setInterval(() => {
+      start += step;
+      if (start >= end) {
+        setCount(end);
+        clearInterval(t);
+      } else {
+        setCount(Math.floor(start));
+      }
+    }, 16);
+    return () => clearInterval(t);
+  }, [isInView, value]);
+
+  return (
+    <span ref={ref}>
+      {count}
+      {suffix}
+    </span>
+  );
+}
+
+function MagneticButton({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+  const springX = useSpring(x, { stiffness: 350, damping: 15 });
+  const springY = useSpring(y, { stiffness: 350, damping: 15 });
+
+  return (
+    <motion.div
+      ref={ref}
+      className={className}
+      style={{ x: springX, y: springY }}
+      onMouseMove={(e) => {
+        const rect = ref.current?.getBoundingClientRect();
+        if (!rect) return;
+        x.set((e.clientX - rect.left - rect.width / 2) * 0.15);
+        y.set((e.clientY - rect.top - rect.height / 2) * 0.15);
+      }}
+      onMouseLeave={() => {
+        x.set(0);
+        y.set(0);
+      }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
 /* ─────────── Slideshow Hook ─────────── */
 function useSlideshow(count: number, interval = 4000) {
   const [current, setCurrent] = useState(0);
@@ -40,6 +169,44 @@ function useSlideshow(count: number, interval = 4000) {
   return { current, setCurrent };
 }
 
+/* ─────────── Framer Motion Variants ─────────── */
+const staggerContainer = {
+  hidden: {},
+  visible: {
+    transition: { staggerChildren: 0.12, delayChildren: 0.1 },
+  },
+};
+
+const staggerItem = {
+  hidden: { opacity: 0, y: 30, filter: "blur(6px)" },
+  visible: {
+    opacity: 1,
+    y: 0,
+    filter: "blur(0px)",
+    transition: { duration: 0.6, ease: [0.25, 0.4, 0.25, 1] as const },
+  },
+};
+
+const slideFromLeft = {
+  hidden: { opacity: 0, x: -80, filter: "blur(6px)" },
+  visible: {
+    opacity: 1,
+    x: 0,
+    filter: "blur(0px)",
+    transition: { duration: 0.9, ease: [0.25, 0.4, 0.25, 1] as const },
+  },
+};
+
+const slideFromRight = {
+  hidden: { opacity: 0, x: 80, filter: "blur(6px)" },
+  visible: {
+    opacity: 1,
+    x: 0,
+    filter: "blur(0px)",
+    transition: { duration: 0.9, ease: [0.25, 0.4, 0.25, 1] as const },
+  },
+};
+
 /* ═══════════════════════════════════════
    HOMEPAGE
    ═══════════════════════════════════════ */
@@ -47,16 +214,34 @@ export default function HomePage() {
   const { isSignedIn } = useAuth();
   const router = useRouter();
   const navRef = useRef<HTMLElement>(null);
-  const heroContentRef = useRef<HTMLDivElement>(null);
-  const heroVisualRef = useRef<HTMLDivElement>(null);
+  const heroRef = useRef<HTMLDivElement>(null);
+  const dashRef = useRef<HTMLDivElement>(null);
   const slideshow = useSlideshow(4);
+
+  /* ── Parallax: Hero ── */
+  const { scrollYProgress: heroScroll } = useScroll({
+    target: heroRef,
+    offset: ["start start", "end start"],
+  });
+  const heroTextY = useTransform(heroScroll, [0, 1], [0, 120]);
+  const heroPhoneY = useTransform(heroScroll, [0, 1], [0, -60]);
+  const heroOpacity = useTransform(heroScroll, [0, 0.8], [1, 0]);
+
+  /* ── Parallax: Dashboard perspective ── */
+  const { scrollYProgress: dashScroll } = useScroll({
+    target: dashRef,
+    offset: ["start end", "center center"],
+  });
+  const dashRotateX = useTransform(dashScroll, [0, 1], [15, 0]);
+  const dashScale = useTransform(dashScroll, [0, 1], [0.85, 1]);
+  const dashOpacity = useTransform(dashScroll, [0, 0.4], [0.3, 1]);
 
   // Redirect signed-in users
   useEffect(() => {
     if (isSignedIn) router.replace("/dashboard");
   }, [isSignedIn, router]);
 
-  /* ── GSAP Animations ── */
+  /* ── Nav scroll handler ── */
   useEffect(() => {
     const onScroll = () => {
       if (!navRef.current) return;
@@ -69,46 +254,7 @@ export default function HomePage() {
       }
     };
     window.addEventListener("scroll", onScroll, { passive: true });
-
-    if (heroContentRef.current) {
-      gsap.from(heroContentRef.current.children, {
-        opacity: 0,
-        y: 50,
-        duration: 1,
-        stagger: 0.15,
-        ease: "power3.out",
-        delay: 0.3,
-      });
-    }
-    if (heroVisualRef.current) {
-      gsap.from(heroVisualRef.current, {
-        opacity: 0,
-        x: 100,
-        duration: 1.2,
-        ease: "power3.out",
-        delay: 0.5,
-      });
-    }
-
-    gsap.utils.toArray<HTMLElement>(".feature-card").forEach((card, i) => {
-      gsap.from(card, {
-        scrollTrigger: {
-          trigger: card,
-          start: "top 85%",
-          toggleActions: "play none none reverse",
-        },
-        opacity: 0,
-        y: 60,
-        duration: 0.8,
-        delay: i * 0.1,
-        ease: "power3.out",
-      });
-    });
-
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      ScrollTrigger.getAll().forEach((t) => t.kill());
-    };
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   /* ── Toast helper ── */
@@ -130,6 +276,12 @@ export default function HomePage() {
 
   return (
     <div className="relative bg-[#0a0a0a] text-[#F5F5F5] antialiased overflow-x-hidden">
+      {/* Scroll Progress */}
+      <ScrollProgress />
+
+      {/* Cursor Glow */}
+      <CursorGlow />
+
       {/* Grain */}
       <div className="grain-overlay" />
 
@@ -184,66 +336,125 @@ export default function HomePage() {
       </nav>
 
       {/* ═══ HERO ═══ */}
-      <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-        <div className="content-layer max-w-7xl mx-auto px-6 py-20 grid lg:grid-cols-2 gap-12 items-center">
+      <section ref={heroRef} className="relative min-h-screen flex items-center justify-center overflow-hidden">
+        {/* Decorative morphing orbs */}
+        <div className="absolute top-1/4 -left-32 w-64 h-64 bg-[#B87333]/10 morph-blob blur-3xl animate-float" />
+        <div className="absolute bottom-1/4 -right-32 w-80 h-80 bg-[#D4A574]/[0.08] morph-blob blur-3xl animate-float-reverse" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-[#B87333]/[0.03] blur-[120px] animate-float-slow" />
+
+        <motion.div
+          style={{ opacity: heroOpacity }}
+          className="content-layer max-w-7xl mx-auto px-6 py-20 grid lg:grid-cols-2 gap-12 items-center"
+        >
           {/* Left */}
-          <div ref={heroContentRef} className="space-y-8">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-panel border border-[#B87333]/20 edge-glow">
+          <motion.div style={{ y: heroTextY }} className="space-y-8">
+            {/* Badge */}
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.6, delay: 0.3, ease: [0.25, 0.4, 0.25, 1] }}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-panel border border-[#B87333]/20 edge-glow"
+            >
               <span className="w-2 h-2 rounded-full bg-[#B87333] animate-pulse" />
               <span className="text-xs font-medium text-[#D4A574] uppercase tracking-widest">
                 AI-Powered Speech Learning
               </span>
-            </div>
+            </motion.div>
 
+            {/* Headline — cinematic line-by-line reveal */}
             <h1 className="font-display font-bold text-5xl md:text-7xl leading-tight glow-text">
-              Feel the <span className="gradient-text">Sound</span>.<br />
-              Master <span className="text-[#B87333]">Speech</span>.
+              <span className="block overflow-hidden">
+                <motion.span
+                  className="block"
+                  initial={{ y: "110%", rotateX: 40 }}
+                  animate={{ y: 0, rotateX: 0 }}
+                  transition={{ duration: 0.9, delay: 0.5, ease: [0.25, 0.4, 0.25, 1] }}
+                >
+                  Feel the <span className="animated-gradient-text">Sound</span>.
+                </motion.span>
+              </span>
+              <span className="block overflow-hidden">
+                <motion.span
+                  className="block"
+                  initial={{ y: "110%", rotateX: 40 }}
+                  animate={{ y: 0, rotateX: 0 }}
+                  transition={{ duration: 0.9, delay: 0.7, ease: [0.25, 0.4, 0.25, 1] }}
+                >
+                  Master <span className="text-[#B87333]">Speech</span>.
+                </motion.span>
+              </span>
             </h1>
 
-            <p className="text-lg text-gray-400 max-w-xl leading-relaxed">
+            {/* Description */}
+            <motion.p
+              initial={{ opacity: 0, y: 30, filter: "blur(8px)" }}
+              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+              transition={{ duration: 0.8, delay: 0.9, ease: [0.25, 0.4, 0.25, 1] }}
+              className="text-lg text-gray-400 max-w-xl leading-relaxed"
+            >
               HapticPhonix uses computer vision, AI lip-reading, and haptic
               feedback to create a revolutionary pronunciation learning
               experience. For deaf/hard-of-hearing learners and anyone seeking
               perfect speech.
-            </p>
+            </motion.p>
 
-            <div className="flex flex-wrap gap-4">
-              <Link
-                href="/signUp"
-                className="group px-8 py-4 bg-gradient-to-r from-[#B87333] to-[#D4A574] text-white font-semibold rounded-full hover:shadow-2xl hover:shadow-[#B87333]/30 transition-all transform hover:scale-105 flex items-center gap-2 edge-glow"
-              >
-                <span>Start Learning</span>
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </Link>
-              <button
-                onClick={() => toast("Demo coming soon!")}
-                className="px-8 py-4 glass-panel text-white font-semibold rounded-full hover:bg-white/5 transition-all flex items-center gap-2 border border-white/10 edge-glow"
-              >
-                <Play className="w-5 h-5 text-[#D4A574]" />
-                <span>Watch Demo</span>
-              </button>
-            </div>
+            {/* Buttons */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 1.1 }}
+              className="flex flex-wrap gap-4"
+            >
+              <MagneticButton>
+                <Link
+                  href="/signUp"
+                  className="group px-8 py-4 bg-gradient-to-r from-[#B87333] to-[#D4A574] text-white font-semibold rounded-full hover:shadow-2xl hover:shadow-[#B87333]/30 transition-all transform hover:scale-105 flex items-center gap-2 edge-glow"
+                >
+                  <span>Start Learning</span>
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </Link>
+              </MagneticButton>
+              <MagneticButton>
+                <button
+                  onClick={() => toast("Demo coming soon!")}
+                  className="px-8 py-4 glass-panel text-white font-semibold rounded-full hover:bg-white/5 transition-all flex items-center gap-2 border border-white/10 edge-glow"
+                >
+                  <Play className="w-5 h-5 text-[#D4A574]" />
+                  <span>Watch Demo</span>
+                </button>
+              </MagneticButton>
+            </motion.div>
 
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-8 pt-8 border-t border-white/10">
+            {/* Stats with animated counters */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 1.3 }}
+              className="grid grid-cols-3 gap-8 pt-8 border-t border-white/10"
+            >
               {[
-                { value: "98%", label: "Accuracy" },
-                { value: "50+", label: "Phonemes" },
-                { value: "8D", label: "Haptic Audio" },
+                { value: 98, suffix: "%", label: "Accuracy" },
+                { value: 50, suffix: "+", label: "Phonemes" },
+                { display: "8D", label: "Haptic Audio" },
               ].map((s) => (
                 <div key={s.label} className="group">
                   <div className="text-3xl font-display font-bold text-white group-hover:text-[#D4A574] transition-colors">
-                    {s.value}
+                    {"display" in s && s.display
+                      ? s.display
+                      : <AnimatedCounter value={s.value!} suffix={s.suffix} />}
                   </div>
                   <div className="text-sm text-gray-500">{s.label}</div>
                 </div>
               ))}
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
 
-          {/* Right — Phone Mockup */}
-          <div
-            ref={heroVisualRef}
+          {/* Right — Phone Mockup with parallax */}
+          <motion.div
+            style={{ y: heroPhoneY }}
+            initial={{ opacity: 0, x: 120, rotate: 12 }}
+            animate={{ opacity: 1, x: 0, rotate: 6 }}
+            transition={{ duration: 1.4, delay: 0.6, ease: [0.25, 0.4, 0.25, 1] }}
             className="relative hidden lg:flex items-center justify-center"
           >
             <div className="relative">
@@ -338,7 +549,7 @@ export default function HomePage() {
                       <button
                         key={i}
                         onClick={() => slideshow.setCurrent(i)}
-                        className={`w-2 h-2 rounded-full transition-all ${slideshow.current === i ? "bg-[#B87333]" : "bg-white/30"}`}
+                        className={`h-1.5 rounded-full transition-all duration-500 ${slideshow.current === i ? "bg-[#B87333] w-8" : "bg-white/30 w-2 hover:bg-white/50"}`}
                       />
                     ))}
                   </div>
@@ -357,20 +568,28 @@ export default function HomePage() {
                 <div className="absolute bottom-10 left-0 w-40 h-40 rounded-full bg-[#D4A574]/10 blur-3xl animate-glow" style={{ animationDelay: "1s" }} />
               </div>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
 
         {/* Scroll indicator */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 content-layer scroll-indicator">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 2, duration: 1, ease: "easeOut" }}
+          className="absolute bottom-8 left-1/2 -translate-x-1/2 content-layer scroll-indicator"
+        >
           <div className="w-6 h-10 rounded-full border-2 border-white/20 flex justify-center pt-2 edge-glow">
             <ChevronDown className="w-3 h-3 text-[#B87333] animate-bounce" />
           </div>
-        </div>
+        </motion.div>
       </section>
+
+      {/* Section divider */}
+      <div className="section-divider" />
 
       {/* ═══ MARQUEE BANNER ═══ */}
       <section className="relative py-8 overflow-hidden border-y border-white/10 bg-black/50 backdrop-blur-sm">
-        <div className="marquee-container">
+        <div className="marquee-container marquee-masked">
           <div className="marquee-content flex items-center gap-8">
             {["8D HAPTICS", "REAL-TIME PROCESSING", "LIP READING AI", "8D HAPTICS", "REAL-TIME PROCESSING", "LIP READING AI"].map((text, i) => (
               <span key={i} className="contents">
@@ -384,21 +603,36 @@ export default function HomePage() {
 
       {/* ═══ ARCHITECTURE ═══ */}
       <section id="architecture" className="relative py-24 overflow-hidden">
+        {/* Decorative orb */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-[#B87333]/5 rounded-full blur-[120px] morph-blob" />
+
         <div className="content-layer max-w-7xl mx-auto px-6">
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#B87333]/10 border border-[#B87333]/20 text-[#D4A574] text-xs font-medium uppercase tracking-wider mb-6">
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-100px" }}
+            variants={staggerContainer}
+            className="text-center mb-16"
+          >
+            <motion.div variants={staggerItem} className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#B87333]/10 border border-[#B87333]/20 text-[#D4A574] text-xs font-medium uppercase tracking-wider mb-6">
               System Design
-            </div>
-            <h2 className="font-display font-bold text-4xl md:text-5xl mb-6 glow-text">
-              CHD <span className="gradient-text">Architecture</span>
-            </h2>
-            <p className="text-gray-400 max-w-2xl mx-auto">
+            </motion.div>
+            <motion.h2 variants={staggerItem} className="font-display font-bold text-4xl md:text-5xl mb-6 glow-text">
+              App <span className="gradient-text">Architecture</span>
+            </motion.h2>
+            <motion.p variants={staggerItem} className="text-gray-400 max-w-2xl mx-auto">
               Real-time speech and lip-reading learning platform with haptic feedback. Supports teacher/student modes and remote lesson delivery.
-            </p>
-          </div>
+            </motion.p>
+          </motion.div>
 
           {/* Architecture SVG */}
-          <div className="relative max-w-6xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 60, scale: 0.95 }}
+            whileInView={{ opacity: 1, y: 0, scale: 1 }}
+            viewport={{ once: true, margin: "-50px" }}
+            transition={{ duration: 1, ease: [0.25, 0.4, 0.25, 1] }}
+            className="relative max-w-6xl mx-auto perspective-1200"
+          >
             <div className="absolute -inset-4 bg-gradient-to-r from-[#B87333]/10 via-[#D4A574]/10 to-[#B87333]/10 rounded-3xl blur-2xl opacity-50" />
             <div className="relative glass-panel rounded-2xl p-8 border border-white/10">
               <svg className="w-full" viewBox="0 0 1000 700" preserveAspectRatio="xMidYMid meet">
@@ -512,33 +746,49 @@ export default function HomePage() {
                 </div>
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* Data Flow Cards */}
-          <div className="mt-12 grid md:grid-cols-3 gap-6">
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-80px" }}
+            variants={staggerContainer}
+            className="mt-12 grid md:grid-cols-3 gap-6"
+          >
             {[
               { icon: <Video className="w-5 h-5 text-[#B87333]" />, bg: "bg-[#B87333]/20", title: "Video Pipeline", desc: "Student phone captures camera → MediaPipe Face Mesh → lip landmarks → broadcast to viewers with bounding boxes" },
               { icon: <FileText className="w-5 h-5 text-blue-400" />, bg: "bg-blue-500/20", title: "Lip Reading", desc: "Cropped lip frames → Gemini Vision every 3s → text, confidence, phonemes → broadcast to dashboard" },
               { icon: <Zap className="w-5 h-5 text-purple-400" />, bg: "bg-purple-500/20", title: "Speech-Haptic", desc: "Teacher mic → ElevenLabs STT → speech chunks → RMS intensity → haptic events → student phone vibration" },
             ].map((card) => (
-              <div key={card.title} className="feature-card rounded-xl p-6">
+              <motion.div key={card.title} variants={staggerItem} whileHover={{ y: -8, transition: { duration: 0.3 } }} className="feature-card glass-shimmer rounded-xl p-6">
                 <div className={`w-10 h-10 rounded-lg ${card.bg} flex items-center justify-center mb-4`}>
                   {card.icon}
                 </div>
                 <h4 className="font-semibold text-white mb-2">{card.title}</h4>
                 <p className="text-sm text-gray-400">{card.desc}</p>
-              </div>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         </div>
       </section>
 
       {/* ═══ FEATURES ═══ */}
       <section id="features" className="relative py-32">
+        {/* Decorative floating elements */}
+        <div className="absolute top-40 -right-20 w-40 h-40 bg-[#B87333]/10 rounded-full blur-[80px] animate-float" />
+        <div className="absolute bottom-60 -left-20 w-60 h-60 bg-[#D4A574]/[0.08] rounded-full blur-[100px] animate-float-reverse" />
+
         <div className="content-layer max-w-7xl mx-auto px-6">
           {/* Lip Reading Feature */}
           <div className="grid lg:grid-cols-2 gap-16 items-center mb-32">
-            <div className="space-y-6">
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-100px" }}
+              variants={slideFromLeft}
+              className="space-y-6"
+            >
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#B87333]/10 border border-[#B87333]/20 text-[#D4A574] text-xs font-medium uppercase tracking-wider edge-glow">
                 Lip Reading AI
               </div>
@@ -564,9 +814,15 @@ export default function HomePage() {
                   </li>
                 ))}
               </ul>
-            </div>
+            </motion.div>
 
-            <div className="relative">
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-100px" }}
+              variants={slideFromRight}
+              className="relative"
+            >
               <div className="absolute inset-0 bg-gradient-to-r from-[#B87333]/20 to-[#D4A574]/20 rounded-3xl blur-3xl animate-glow" />
               <div className="relative glass-panel rounded-3xl p-8 border border-white/10 edge-glow">
                 <div className="aspect-video bg-black rounded-2xl overflow-hidden relative">
@@ -607,12 +863,18 @@ export default function HomePage() {
                   </div>
                 </div>
               </div>
-            </div>
+            </motion.div>
           </div>
 
           {/* Haptic Feature */}
           <div className="grid lg:grid-cols-2 gap-16 items-center mb-32">
-            <div className="order-2 lg:order-1 relative">
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-100px" }}
+              variants={slideFromLeft}
+              className="order-2 lg:order-1 relative"
+            >
               <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-3xl blur-3xl animate-glow" style={{ animationDelay: "0.5s" }} />
               <div className="relative glass-panel rounded-3xl p-8 border border-white/10 edge-glow">
                 <div className="grid grid-cols-3 gap-4">
@@ -657,9 +919,15 @@ export default function HomePage() {
                   </div>
                 </div>
               </div>
-            </div>
+            </motion.div>
 
-            <div className="order-1 lg:order-2 space-y-6">
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-100px" }}
+              variants={slideFromRight}
+              className="order-1 lg:order-2 space-y-6"
+            >
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-xs font-medium uppercase tracking-wider edge-glow">
                 8D Haptic Engine
               </div>
@@ -679,27 +947,42 @@ export default function HomePage() {
                   <div className="text-sm text-gray-400">Update frequency</div>
                 </div>
               </div>
-            </div>
+            </motion.div>
           </div>
         </div>
       </section>
 
+      {/* Section divider */}
+      <div className="section-divider" />
+
       {/* ═══ DASHBOARD PREVIEW ═══ */}
-      <section id="dashboard" className="relative py-32 overflow-hidden">
+      <section id="dashboard" ref={dashRef} className="relative py-32 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#B87333]/5 to-transparent" />
         <div className="content-layer max-w-7xl mx-auto px-6">
-          <div className="text-center mb-16">
-            <h2 className="font-display font-bold text-4xl md:text-5xl mb-6 glow-text">
-              Teacher <span className="gradient-text">Dashboard</span>
-            </h2>
-            <p className="text-gray-400 max-w-2xl mx-auto">
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={staggerContainer}
+            className="text-center mb-16"
+          >
+            <motion.h2 variants={staggerItem} className="font-display font-bold text-4xl md:text-5xl mb-6 glow-text">
+              Dashboard
+            </motion.h2>
+            <motion.p variants={staggerItem} className="text-gray-400 max-w-2xl mx-auto">
               Real-time monitoring, lesson control, and AI-powered insights for educators.
-            </p>
-          </div>
+            </motion.p>
+          </motion.div>
 
-          <div className="relative max-w-6xl mx-auto">
+          <div className="relative max-w-6xl mx-auto perspective-1200">
             <div className="absolute -inset-4 bg-gradient-to-r from-[#B87333]/20 via-[#D4A574]/20 to-[#B87333]/20 rounded-3xl blur-2xl opacity-50" />
-            <div className="relative glass-panel rounded-2xl border border-white/10 overflow-hidden shadow-2xl edge-glow">
+            <motion.div
+              style={{
+                rotateX: dashRotateX,
+                scale: dashScale,
+                opacity: dashOpacity,
+              }}
+              className="relative glass-panel rounded-2xl border border-white/10 overflow-hidden shadow-2xl edge-glow">
               <div className="bg-gray-900 border-b border-white/5 px-4 py-3 flex items-center gap-2">
                 <div className="flex gap-1.5">
                   <div className="w-3 h-3 rounded-full bg-red-500/80" />
@@ -736,6 +1019,8 @@ export default function HomePage() {
                       </div>
                     </div>
                     <div className="absolute top-4 left-4 px-2 py-1 bg-green-500/20 border border-green-500/30 rounded text-[10px] text-green-400 font-mono">LIVE</div>
+                    {/* Scan line */}
+                    <div className="scan-line absolute inset-0" />
                     <div className="absolute bottom-4 right-4 px-2 py-1 bg-black/60 backdrop-blur rounded border border-white/10 text-[10px] text-gray-400">Latency: 24ms</div>
                   </div>
 
@@ -802,7 +1087,7 @@ export default function HomePage() {
                   </div>
                 </div>
               </div>
-            </div>
+            </motion.div>
           </div>
         </div>
       </section>
@@ -810,26 +1095,46 @@ export default function HomePage() {
       {/* ═══ CTA ═══ */}
       <section className="relative py-32 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-[#B87333]/10 via-transparent to-[#D4A574]/10" />
-        <div className="content-layer max-w-4xl mx-auto px-6 text-center">
-          <h2 className="font-display font-bold text-5xl md:text-6xl mb-6 glow-text">
-            Ready to <span className="gradient-text">Feel</span> the Difference?
-          </h2>
-          <p className="text-xl text-gray-400 mb-10 leading-relaxed">
+        {/* Decorative orbs */}
+        <div className="absolute top-1/2 left-1/4 w-64 h-64 bg-[#B87333]/[0.06] rounded-full blur-[100px] morph-blob animate-float" />
+        <div className="absolute top-1/2 right-1/4 w-48 h-48 bg-[#D4A574]/[0.06] rounded-full blur-[80px] morph-blob animate-float-reverse" />
+
+        <motion.div
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-80px" }}
+          variants={staggerContainer}
+          className="content-layer max-w-4xl mx-auto px-6 text-center"
+        >
+          <motion.h2 variants={staggerItem} className="font-display font-bold text-5xl md:text-6xl mb-6 glow-text">
+            Ready to <span className="animated-gradient-text">Feel</span> the Difference?
+          </motion.h2>
+          <motion.p variants={staggerItem} className="text-xl text-gray-400 mb-10 leading-relaxed">
             Join thousands of learners and educators transforming speech therapy with AI-powered haptic feedback.
-          </p>
-          <div className="flex flex-wrap justify-center gap-4">
-            <Link href="/signUp" className="px-10 py-5 bg-gradient-to-r from-[#B87333] to-[#D4A574] text-white font-semibold rounded-full hover:shadow-2xl hover:shadow-[#B87333]/30 transition-all transform hover:scale-105 edge-glow">
-              Start Free Trial
-            </Link>
-            <button onClick={() => toast("Contact form coming soon!")} className="px-10 py-5 glass-panel text-white font-semibold rounded-full hover:bg-white/5 transition-all border border-white/10 edge-glow">
-              Contact Sales
-            </button>
-          </div>
-        </div>
+          </motion.p>
+          <motion.div variants={staggerItem} className="flex flex-wrap justify-center gap-4">
+            <MagneticButton>
+              <Link href="/signUp" className="px-10 py-5 bg-gradient-to-r from-[#B87333] to-[#D4A574] text-white font-semibold rounded-full hover:shadow-2xl hover:shadow-[#B87333]/30 transition-all transform hover:scale-105 edge-glow">
+                Start Free Trial
+              </Link>
+            </MagneticButton>
+            <MagneticButton>
+              <button onClick={() => toast("Contact form coming soon!")} className="px-10 py-5 glass-panel text-white font-semibold rounded-full hover:bg-white/5 transition-all border border-white/10 edge-glow">
+                Contact Sales
+              </button>
+            </MagneticButton>
+          </motion.div>
+        </motion.div>
       </section>
 
       {/* ═══ FOOTER ═══ */}
-      <footer className="relative py-16 border-t border-white/5">
+      <motion.footer
+        initial={{ opacity: 0, y: 40 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.8, ease: [0.25, 0.4, 0.25, 1] }}
+        className="relative py-16 border-t border-white/5"
+      >
         <div className="content-layer max-w-7xl mx-auto px-6">
           <div className="grid md:grid-cols-4 gap-12 mb-12">
             <div className="space-y-4">
@@ -877,7 +1182,7 @@ export default function HomePage() {
             </div>
           </div>
         </div>
-      </footer>
+      </motion.footer>
     </div>
   );
 }

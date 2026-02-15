@@ -404,6 +404,116 @@ body {
   background: rgba(212, 165, 116, 0.5);
 }
 
+/* ─── Enhanced Landing Page Animations ─── */
+
+/* Float */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-20px); }
+}
+@keyframes floatReverse {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(15px); }
+}
+.animate-float { animation: float 6s ease-in-out infinite; }
+.animate-float-reverse { animation: floatReverse 7s ease-in-out infinite; }
+.animate-float-slow { animation: float 10s ease-in-out infinite; }
+
+/* Morphing Blob */
+@keyframes morph {
+  0%, 100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
+  25% { border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%; }
+  50% { border-radius: 50% 60% 30% 60% / 30% 60% 70% 40%; }
+  75% { border-radius: 60% 40% 60% 30% / 60% 40% 30% 60%; }
+}
+.morph-blob { animation: morph 10s ease-in-out infinite; }
+
+/* Glass Shimmer */
+.glass-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.glass-shimmer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent 0%, rgba(212,165,116,0.06) 50%, transparent 100%);
+  transform: translateX(-100%) skewX(-15deg);
+  pointer-events: none;
+  z-index: 1;
+}
+.glass-shimmer:hover::before {
+  animation: glassShimmer 0.8s ease forwards;
+}
+@keyframes glassShimmer {
+  to { transform: translateX(100%) skewX(-15deg); }
+}
+
+/* Marquee Gradient Mask */
+.marquee-masked {
+  mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+}
+
+/* Animated Gradient Text */
+.animated-gradient-text {
+  background: linear-gradient(135deg, #D4A574, #B87333, #F5F1E8, #D4A574);
+  background-size: 300% 300%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gradientShift 4s ease infinite;
+}
+@keyframes gradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+/* Perspective Utility */
+.perspective-1200 { perspective: 1200px; }
+
+/* Scan Line */
+.scan-line {
+  position: relative;
+  overflow: hidden;
+}
+.scan-line::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(184,115,51,0.4), transparent);
+  animation: scanLine 3s linear infinite;
+  pointer-events: none;
+  z-index: 2;
+}
+@keyframes scanLine {
+  0% { top: -1px; }
+  100% { top: 100%; }
+}
+
+/* Orbit */
+@keyframes orbit {
+  from { transform: rotate(0deg) translateX(120px) rotate(0deg); }
+  to { transform: rotate(360deg) translateX(120px) rotate(-360deg); }
+}
+.animate-orbit { animation: orbit 20s linear infinite; }
+
+/* Slide indicator active state */
+.slide-indicator {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Section divider gradient */
+.section-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(184,115,51,0.3), transparent);
+}
+
 /* ─── Accessibility ─── */
 @media (prefers-reduced-motion: reduce) {
   .marquee-content {
@@ -414,7 +524,19 @@ body {
   .animate-glow,
   .animate-vibrate,
   .animate-copper-pulse,
-  .animate-dot-pulse {
+  .animate-dot-pulse,
+  .animate-float,
+  .animate-float-reverse,
+  .animate-float-slow,
+  .morph-blob,
+  .animate-orbit,
+  .animated-gradient-text {
+    animation: none;
+  }
+  .glass-shimmer::before {
+    animation: none !important;
+  }
+  .scan-line::after {
     animation: none;
   }
   .slideshow-slide {
