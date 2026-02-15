@@ -217,7 +217,7 @@ export default function StudentPage() {
             <div
               className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs cursor-pointer transition-colors ${
                 haptics.state.isVibrating
-                  ? "bg-purple-900/60 border border-purple-500/40 text-purple-300 animate-pulse"
+              ? "bg-[#B87333]/30 border border-[#B87333]/40 text-[#D4A574] animate-pulse"
                   : "bg-gray-800 border border-gray-700 text-gray-400"
               }`}
               onClick={() => setShowHapticPanel(!showHapticPanel)}
@@ -249,12 +249,12 @@ export default function StudentPage() {
             type="text"
             value={serverUrl}
             onChange={(e) => setServerUrl(e.target.value)}
-            className="flex-1 bg-gray-800 rounded px-3 py-2 text-sm font-mono border border-gray-700 focus:border-blue-500 outline-none"
+            className="flex-1 bg-gray-800 rounded px-3 py-2 text-sm font-mono border border-gray-700 focus:border-[#B87333] outline-none"
             placeholder="ws://192.168.x.x:8000/ws/video"
           />
           <button
             onClick={connectSocket}
-            className="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded text-sm font-bold transition-colors"
+            className="bg-[#B87333] hover:bg-[#D4A574] px-4 py-2 rounded text-sm font-bold transition-colors"
           >
             Connect
           </button>
@@ -267,11 +267,11 @@ export default function StudentPage() {
           <div className="p-3 border-b border-gray-800 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className={`w-2 h-2 rounded-full ${
-                haptics.state.isVibrating ? "bg-purple-400 animate-pulse" : haptics.enabled ? "bg-gray-500" : "bg-red-500"
+                haptics.state.isVibrating ? "bg-[#D4A574] animate-pulse" : haptics.enabled ? "bg-gray-500" : "bg-red-500"
               }`} />
               <span className="text-sm font-semibold text-gray-200">📳 Haptic Vibration</span>
               {haptics.state.isVibrating && (
-                <span className="text-[10px] bg-purple-900/50 text-purple-300 px-2 py-0.5 rounded-full font-mono border border-purple-500/30">
+                <span className="text-[10px] bg-[#B87333]/30 text-[#D4A574] px-2 py-0.5 rounded-full font-mono border border-[#B87333]/30">
                   VIBRATING
                 </span>
               )}
@@ -280,7 +280,7 @@ export default function StudentPage() {
             <button
               onClick={() => haptics.setEnabled(!haptics.enabled)}
               className={`relative w-10 h-5 rounded-full transition-colors ${
-                haptics.enabled ? "bg-purple-600" : "bg-gray-700"
+                haptics.enabled ? "bg-[#B87333]" : "bg-gray-700"
               }`}
             >
               <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${

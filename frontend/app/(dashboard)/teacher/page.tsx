@@ -210,12 +210,12 @@ export default function TeacherPage() {
       {/* Header */}
       <header className="bg-gray-900 border-b border-gray-800 px-6 py-3 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-3">
-          <h1 className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-400">
+          <h1 className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-[#B87333] to-[#D4A574]">
             HapticPhonix
           </h1>
           <span className="text-xs text-gray-500 border-l border-gray-700 pl-3">Teacher View</span>
           {isPlayingRecording && (
-            <span className="text-xs bg-indigo-600 text-white px-2 py-0.5 rounded-full animate-pulse">
+            <span className="text-xs bg-[#B87333]/20 text-[#D4A574] px-2 py-0.5 rounded-full animate-pulse border border-[#B87333]/30">
               Replaying
             </span>
           )}
@@ -263,10 +263,10 @@ export default function TeacherPage() {
               )}
               {translation && (
                 <div>
-                  <span className="text-[10px] uppercase tracking-wider text-indigo-500">
+                  <span className="text-[10px] uppercase tracking-wider text-[#D4A574]">
                     Translation ({targetLanguage})
                   </span>
-                  <p className="text-sm text-indigo-300 mt-1">{translation}</p>
+                  <p className="text-sm text-[#D4A574] mt-1">{translation}</p>
                 </div>
               )}
             </div>
@@ -285,7 +285,7 @@ export default function TeacherPage() {
                         ? "bg-red-900/30 border border-red-800"
                         : lm.index === 13 || lm.index === 14
                         ? "bg-green-900/30 border border-green-800"
-                        : "bg-blue-900/30 border border-blue-800"
+                        : "bg-[#B87333]/10 border border-[#B87333]/30"
                     }`}
                   >
                     <div className="font-bold text-white">#{lm.index}</div>
@@ -313,7 +313,7 @@ export default function TeacherPage() {
                 onClick={() => setActiveTab(tab.key)}
                 className={`flex-1 py-2.5 text-xs font-medium transition-colors ${
                   activeTab === tab.key
-                    ? "text-indigo-400 border-b-2 border-indigo-400 bg-gray-900/80"
+                    ? "text-[#D4A574] border-b-2 border-[#D4A574] bg-gray-900/80"
                     : "text-gray-500 hover:text-gray-300"
                 }`}
               >
@@ -333,7 +333,7 @@ export default function TeacherPage() {
                     <select
                       value={selectedLesson}
                       onChange={(e) => setSelectedLesson(e.target.value)}
-                      className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
+                      className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#B87333]"
                     >
                       {availableLessons.map((l) => (
                         <option key={l} value={l}>{l.replace(".json", "")}</option>
@@ -344,7 +344,7 @@ export default function TeacherPage() {
                     </select>
                     <button
                       onClick={loadLesson}
-                      className="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                      className="bg-[#B87333] hover:bg-[#D4A574] px-4 py-2 rounded-lg text-sm font-medium transition-colors"
                     >
                       Load
                     </button>
@@ -402,7 +402,7 @@ export default function TeacherPage() {
                             <span className="font-mono">{(w * 100).toFixed(1)}%</span>
                           </div>
                           <div className="w-full h-3 bg-gray-800 rounded-full overflow-hidden">
-                            <div className="h-full rounded-full transition-all duration-75 bg-gradient-to-r from-blue-500 to-indigo-400"
+                            <div className="h-full rounded-full transition-all duration-75 bg-gradient-to-r from-[#B87333] to-[#D4A574]"
                               style={{ width: `${Math.min(w * 100 * 5, 100)}%` }} />
                           </div>
                         </div>
@@ -441,7 +441,7 @@ export default function TeacherPage() {
                         method: "POST",
                       }).catch(() => {});
                     }}
-                    className="w-full px-3 py-2 rounded-lg text-sm font-medium bg-purple-900/30 border border-purple-700 text-purple-400 hover:bg-purple-900/50"
+                    className="w-full px-3 py-2 rounded-lg text-sm font-medium bg-[#B87333]/20 border border-[#B87333]/50 text-[#D4A574] hover:bg-[#B87333]/30"
                   >
                     📳 Send test vibration to phones
                   </button>

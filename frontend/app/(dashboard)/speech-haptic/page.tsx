@@ -73,7 +73,7 @@ export default function SpeechHapticPage() {
       {/* ── Header ── */}
       <header className="flex items-center justify-between px-4 py-3 bg-gray-900/80 backdrop-blur border-b border-gray-800/60">
         <div className="flex items-center gap-2">
-          <div className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-pink-400 to-rose-400">
+          <div className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-[#B87333] via-[#D4A574] to-[#B87333]">
             Speech → Haptic
           </div>
           {haptic.isPipelineRunning && (
@@ -104,7 +104,7 @@ export default function SpeechHapticPage() {
 
       {/* ── Info Banner ── */}
       {showInfo && (
-        <div className="mx-4 mt-3 p-3 bg-indigo-950/50 border border-indigo-500/20 rounded-xl text-xs text-indigo-300 leading-relaxed">
+        <div className="mx-4 mt-3 p-3 bg-[#B87333]/10 border border-[#B87333]/20 rounded-xl text-xs text-[#D4A574] leading-relaxed">
           <p className="font-semibold mb-1">How it works:</p>
           <p>
             Your laptop mic captures speech → ElevenLabs transcribes in real-time
@@ -113,7 +113,7 @@ export default function SpeechHapticPage() {
           </p>
           <button
             onClick={() => setShowInfo(false)}
-            className="mt-2 text-indigo-400 underline"
+            className="mt-2 text-[#D4A574] underline"
           >
             Got it
           </button>
@@ -127,7 +127,7 @@ export default function SpeechHapticPage() {
           {!haptic.isConnected ? (
             <button
               onClick={haptic.connect}
-              className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white py-3 rounded-xl font-bold text-sm transition-all active:scale-[0.98] shadow-lg shadow-purple-500/20"
+              className="flex-1 bg-gradient-to-r from-[#B87333] to-[#D4A574] hover:from-[#D4A574] hover:to-[#B87333] text-white py-3 rounded-xl font-bold text-sm transition-all active:scale-[0.98] shadow-lg shadow-[#B87333]/20"
             >
               🔌 Connect
             </button>
@@ -245,7 +245,7 @@ export default function SpeechHapticPage() {
                     {[0, 1, 2].map((i) => (
                       <div
                         key={i}
-                        className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-bounce"
+                        className="w-1.5 h-1.5 bg-[#D4A574] rounded-full animate-bounce"
                         style={{ animationDelay: `${i * 0.15}s` }}
                       />
                     ))}

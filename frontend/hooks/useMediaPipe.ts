@@ -59,8 +59,8 @@ export const useMediaPipe = (videoRef: React.RefObject<HTMLVideoElement>) => {
     
     const process = async () => {
       try {
-        // @ts-expect-error - MediaPipe types
-        await (faceMeshRef.current as { send: (image: { image: HTMLVideoElement }) => Promise<void> }).send({ image: videoRef.current });
+        // MediaPipe types cast
+        await (faceMeshRef.current as { send: (image: { image: HTMLVideoElement }) => Promise<void> }).send({ image: videoRef.current as HTMLVideoElement });
       } catch (error) {
         console.error('Frame processing error:', error);
       }
@@ -68,7 +68,6 @@ export const useMediaPipe = (videoRef: React.RefObject<HTMLVideoElement>) => {
     
     process();
     animationFrameRef.current = requestAnimationFrame(() => {
-      // @ts-expect-error - processFrame will be defined
       processFrame();
     });
   }, [videoRef]);
@@ -82,13 +81,13 @@ export const useMediaPipe = (videoRef: React.RefObject<HTMLVideoElement>) => {
     try {
       const FaceMesh = await loadMediaPipe();
       
-      // @ts-expect-error - MediaPipe constructor
+      // MediaPipe constructor
       const faceMesh = new (FaceMesh as new (config: unknown) => unknown)({
         locateFile: (file: string) => 
           `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559220/${file}`
       });
       
-      // @ts-expect-error - MediaPipe types
+      // MediaPipe types
       (faceMesh as { setOptions: (options: unknown) => void }).setOptions({
         maxNumFaces: 1,
         refineLandmarks: true,
@@ -96,8 +95,9 @@ export const useMediaPipe = (videoRef: React.RefObject<HTMLVideoElement>) => {
         minTrackingConfidence: 0.5
       });
       
-      // @ts-expect-error - MediaPipe types
-      (faceMesh as { onResults: (callback: (results: unknown) => void) => void }).onResults((results: { multiFaceLandmarks?: Array<Array<{ x: number; y: number; z: number }>> }) => {
+      // MediaPipe types
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (faceMesh as { onResults: (callback: (results: any) => void) => void }).onResults((results: { multiFaceLandmarks?: Array<Array<{ x: number; y: number; z: number }>> }) => {
         if (results.multiFaceLandmarks?.[0]) {
           const landmarks = results.multiFaceLandmarks[0]
             .filter((_: unknown, i: number) => LIP_LANDMARKS.includes(i))
@@ -147,7 +147,7 @@ export const useMediaPipe = (videoRef: React.RefObject<HTMLVideoElement>) => {
   
   const cleanup = useCallback(() => {
     stopProcessing();
-    // @ts-expect-error - MediaPipe types
+    // MediaPipe types
     (faceMeshRef.current as { close?: () => void })?.close?.();
     faceMeshRef.current = null;
     setState({

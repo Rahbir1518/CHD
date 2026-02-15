@@ -226,15 +226,15 @@ export default function DashboardPage() {
   }, []);
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50 text-gray-900">
+    <div className="flex flex-col h-screen bg-gray-950 text-gray-100">
       {/* Sticky Header */}
-      <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
+      <header className="glass-panel border-b border-white/10 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-3">
-          <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
-            HapticPhonix <span className="text-gray-400 font-normal">Dashboard</span>
+          <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-[#B87333] to-[#D4A574]">
+            HapticPhonix <span className="text-gray-500 font-normal">Dashboard</span>
           </h1>
           {isPlayingRecording && (
-            <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full animate-pulse border border-indigo-200">
+            <span className="text-xs bg-[#B87333]/20 text-[#D4A574] px-2 py-0.5 rounded-full animate-pulse border border-[#B87333]/30">
               Replaying Recording
             </span>
           )}
@@ -244,8 +244,8 @@ export default function DashboardPage() {
             onClick={() => setShowOverlay(!showOverlay)}
             className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
               showOverlay 
-                ? 'bg-green-50 border-green-300 text-green-700' 
-                : 'bg-gray-50 border-gray-300 text-gray-500'
+                ? 'bg-green-900/30 border-green-700 text-green-400' 
+                : 'bg-gray-900 border-gray-700 text-gray-500'
             }`}
           >
             {showOverlay ? '🎯 Overlay ON' : '○ Overlay OFF'}
@@ -261,7 +261,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-7xl mx-auto">
           {/* Live Stream Card with Bounding Box + Landmarks Overlay */}
           <div className="space-y-4">
-            <div className="bg-white p-1 rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="bg-black/40 p-1 rounded-xl shadow-sm border border-white/10 overflow-hidden">
               <VideoPlayer 
                 frameSrc={frameSrc} 
                 status={status} 
@@ -275,7 +275,7 @@ export default function DashboardPage() {
               />
               <div className="p-3 flex justify-between items-center">
                 <div>
-                  <h2 className="font-semibold text-sm text-gray-700">Live Camera Feed</h2>
+                  <h2 className="font-semibold text-sm text-gray-200">Live Camera Feed</h2>
                   <p className="text-xs text-gray-500">
                     {landmarks.length > 0 
                       ? `Tracking ${landmarks.length} lip landmarks · Bounding box ${lipBoundingBox ? 'active' : 'inactive'} · ${mouthState}`
@@ -292,19 +292,19 @@ export default function DashboardPage() {
 
             {/* Transcript/Translation under video */}
             {(transcript || translation) && (
-              <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 space-y-2">
+              <div className="bg-black/40 p-4 rounded-xl shadow-sm border border-white/10 space-y-2">
                 {transcript && (
                   <div>
                     <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Speech</span>
-                    <p className="text-sm text-gray-800 mt-1">{transcript}</p>
+                    <p className="text-sm text-gray-200 mt-1">{transcript}</p>
                   </div>
                 )}
                 {translation && (
                   <div>
-                    <span className="text-[10px] uppercase tracking-wider text-indigo-500 font-semibold">
+                    <span className="text-[10px] uppercase tracking-wider text-[#D4A574] font-semibold">
                       {targetLanguage} Translation
                     </span>
-                    <p className="text-sm text-indigo-600 mt-1">{translation}</p>
+                    <p className="text-sm text-[#D4A574] mt-1">{translation}</p>
                   </div>
                 )}
               </div>
@@ -317,8 +317,8 @@ export default function DashboardPage() {
           {/* Right column */}
           <div className="space-y-6">
             {/* Lip Reading Panel — NEW */}
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden p-4">
-              <h2 className="font-semibold text-lg mb-3 text-gray-800">👄 Lip Reading AI</h2>
+            <div className="bg-black/40 rounded-xl border border-white/10 shadow-sm overflow-hidden p-4">
+              <h2 className="font-semibold text-lg mb-3 text-[#D4A574]">👄 Lip Reading AI</h2>
               <LipReadingPanel
                 latestResult={lipReadingResult}
                 history={lipReadingHistory}
@@ -327,15 +327,15 @@ export default function DashboardPage() {
               />
             </div>
 
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="bg-black/40 rounded-xl border border-white/10 shadow-sm overflow-hidden">
               {/* Session controls */}
-              <div className="p-4 border-b border-gray-200">
-                <h2 className="font-semibold text-lg mb-3 text-gray-800">Session Controls</h2>
+              <div className="p-4 border-b border-white/10">
+                <h2 className="font-semibold text-lg mb-3 text-gray-200">Session Controls</h2>
                 <div className="flex flex-wrap gap-2 mb-3">
                   <select
                     value={selectedLesson}
                     onChange={(e) => setSelectedLesson(e.target.value)}
-                    className="rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white"
+                    className="rounded-lg border border-gray-700 px-3 py-2 text-sm bg-gray-900 text-gray-200"
                   >
                     {availableLessons.map((l) => (
                       <option key={l} value={l}>{l.replace(".json", "")}</option>
@@ -346,7 +346,7 @@ export default function DashboardPage() {
                   </select>
                   <button
                     onClick={loadLesson}
-                    className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium"
+                    className="bg-[#B87333] hover:bg-[#D4A574] text-white px-4 py-2 rounded-lg text-sm font-medium"
                   >
                     Load Lesson
                   </button>
@@ -378,17 +378,17 @@ export default function DashboardPage() {
               </div>
 
               {/* Haptic log */}
-              <div className="p-4 border-b border-gray-200">
-                <h2 className="font-semibold text-lg mb-3 text-gray-800">Haptic Feedback Log</h2>
+              <div className="p-4 border-b border-white/10">
+                <h2 className="font-semibold text-lg mb-3 text-gray-200">Haptic Feedback Log</h2>
                 {hapticLog.length === 0 ? (
-                  <div className="p-3 bg-gray-50 text-gray-400 rounded-lg text-sm text-center">
+                  <div className="p-3 bg-gray-900 text-gray-500 rounded-lg text-sm text-center">
                     No haptic events yet. Start a lesson or use the phone to feel vibrations.
                   </div>
                 ) : (
                   <div className="space-y-1 max-h-32 overflow-y-auto">
                     {hapticLog.slice().reverse().map((evt, i) => (
-                      <div key={i} className="flex items-center justify-between text-xs p-2 bg-gray-50 rounded">
-                        <span className="font-mono font-medium text-gray-700">{evt.phoneme_type}</span>
+                      <div key={i} className="flex items-center justify-between text-xs p-2 bg-gray-900 rounded">
+                        <span className="font-mono font-medium text-[#D4A574]">{evt.phoneme_type}</span>
                         <span className="text-gray-400">[{evt.pattern?.join(", ")}]</span>
                         <span className="text-gray-500">{(evt.confidence * 100).toFixed(0)}%</span>
                       </div>
@@ -398,9 +398,9 @@ export default function DashboardPage() {
               </div>
 
               {/* Connection details */}
-              <div className="p-4 border-b border-gray-200">
-                <h2 className="font-semibold text-sm mb-2 text-gray-700">Connection</h2>
-                <div className="text-xs font-mono space-y-1 text-gray-600">
+              <div className="p-4 border-b border-white/10">
+                <h2 className="font-semibold text-sm mb-2 text-gray-300">Connection</h2>
+                <div className="text-xs font-mono space-y-1 text-gray-400">
                   <div className="flex justify-between"><span>Status</span><span className="uppercase font-semibold">{status}</span></div>
                   <div className="flex justify-between"><span>Landmarks</span><span>{landmarkCount}</span></div>
                   <div className="flex justify-between"><span>Lip BBox</span><span>{lipBoundingBox ? "Active" : "None"}</span></div>
@@ -409,8 +409,8 @@ export default function DashboardPage() {
               </div>
 
               {/* Record & Replay */}
-              <div className="p-4 border-b border-gray-200">
-                <h2 className="font-semibold text-lg mb-3 text-gray-800">Record & Replay</h2>
+              <div className="p-4 border-b border-white/10">
+                <h2 className="font-semibold text-lg mb-3 text-gray-200">Record & Replay</h2>
                 <RecordingControls
                   isLive={status === "connected" && !!frameSrc}
                   currentFrameSrc={frameSrc}
@@ -430,7 +430,7 @@ export default function DashboardPage() {
 
               {/* Transcribe */}
               <div className="p-4">
-                <h2 className="font-semibold text-lg mb-3 text-gray-800">Transcribe</h2>
+                <h2 className="font-semibold text-lg mb-3 text-gray-200">Transcribe</h2>
                 <TranscriptionPanel
                   isLive={status === "connected"}
                   onTranscript={(t) => setTranscript(t)}
