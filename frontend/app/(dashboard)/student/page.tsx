@@ -4,6 +4,8 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import ConnectionStatus from "@/components/ConnectionStatus";
 import { usePitchAnalysis } from "@/hooks/usePitchAnalysis";
 import { useLaryngealHaptics } from "@/hooks/useLaryngealHaptics";
+import { useSpeechHaptic } from "@/hooks/useSpeechHaptic";
+
 import { getTestSoundDescription } from "@/lib/laryngealHaptics";
 
 interface LipBoundingBox {
@@ -43,6 +45,22 @@ export default function StudentPage() {
     smoothingAlpha: 0.35,
     pulsesPerBatch: 4,
   });
+
+  // ── Remote Speech-to-Haptic Pipeline (Teacher's Voice) ──
+  const speechHaptic = useSpeechHaptic({
+    autoConnect: false,
+    initialVibrationEnabled: true,
+  });
+
+  // Sync Remote Connection with Main Connection
+  useEffect(() => {
+    if (status === "connected") {
+      // Connect remote pipeline (defaults to same host as window)
+      speechHaptic.connect();
+    } else if (status === "disconnected") {
+      speechHaptic.disconnect();
+    }
+  }, [status, speechHaptic.connect, speechHaptic.disconnect]);
 
   // Feed every pitch frame into the haptic engine for real-time vibration
   useEffect(() => {
@@ -369,6 +387,60 @@ export default function StudentPage() {
           )}
         </div>
       )}
+      {/* ── Remote Haptics Controls (Teacher Voice) ── */}
+      {showHapticPanel && (
+        <div className="mb-4 bg-indigo-900/20 rounded-lg border border-indigo-500/30 overflow-hidden">
+           <div className="p-3 border-b border-indigo-500/20 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-indigo-200">🎙️ Teacher Voice (Remote)</span>
+                {speechHaptic.isConnected && (
+                  <span className="text-[10px] bg-green-900/50 text-green-300 px-2 py-0.5 rounded-full font-mono border border-green-500/30">
+                    CONNECTED
+                  </span>
+                )}
+              </div>
+              {speechHaptic.isConnected && (
+                <button
+                   onClick={async () => {
+                     if (speechHaptic.isPipelineRunning) {
+                       await speechHaptic.stopPipeline();
+                     } else {
+                       await speechHaptic.startPipeline();
+                     }
+                   }}
+                   className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                     speechHaptic.isPipelineRunning
+                       ? "bg-red-900/40 border-red-500 text-red-400"
+                       : "bg-green-900/40 border-green-500 text-green-400"
+                   }`}
+                >
+                  {speechHaptic.isPipelineRunning ? "🛑 Stop Listening" : "▶ Start Listening"}
+                </button>
+              )}
+           </div>
+
+           {speechHaptic.isPipelineRunning && (
+             <div className="p-3">
+               <div className="flex items-center justify-between mb-2">
+                 <span className="text-[10px] uppercase text-indigo-400 font-semibold">Live Transcript</span>
+                 <span className="text-[10px] text-gray-500 font-mono">{speechHaptic.chunksReceived} chunks</span>
+               </div>
+               <div className="h-16 bg-black/40 rounded p-2 overflow-y-auto text-xs text-indigo-100 font-mono scrollbar-thin">
+                 {speechHaptic.transcriptChunks.slice(-5).map((c, i) => (
+                   <span key={i} className={c.intensity === "high" || c.intensity === "burst" ? "text-white font-bold" : "text-gray-300"}>
+                     {c.text}{" "}
+                   </span>
+                 ))}
+                 {speechHaptic.transcriptChunks.length === 0 && (
+                   <span className="text-gray-600 italic">Waiting for speech...</span>
+                 )}
+               </div>
+             </div>
+           )}
+        </div>
+      )}
+
+
 
       {/* View toggle + Haptic toggle row */}
       <div className="mb-2 flex justify-center gap-2">
@@ -475,6 +547,19 @@ export default function StudentPage() {
             </div>
           )}
         </div>
+
+        {/* Transcript Overlay (Bottom Left) */}
+        {speechHaptic.isPipelineRunning && speechHaptic.transcriptChunks.length > 0 && (
+          <div className="absolute bottom-16 left-4 right-16 z-20 pointer-events-none">
+            <div className="flex flex-col items-start gap-1">
+              {speechHaptic.transcriptChunks.slice(-2).map((chunk, i) => (
+                <div key={i} className="bg-black/60 backdrop-blur px-3 py-1.5 rounded-r-xl rounded-tl-xl border-l-2 border-indigo-500 text-white text-sm shadow-lg animate-in slide-in-from-left-2 duration-300">
+                  {chunk.text}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Vibration indicator overlay on video feed */}
         {haptics.state.isVibrating && (

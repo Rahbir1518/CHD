@@ -11,15 +11,18 @@ from dotenv import load_dotenv
 import json
 
 # Import our components
-from websocket_server import manager, viewer_manager, haptic_manager, speech_manager
+from websocket_server import manager, viewer_manager, haptic_manager, speech_manager, speech_haptic_ws_manager
 from mediapipe_processor import MediaPipeProcessor
 from phoneme_engine import phoneme_engine, load_lesson
 from lip_reading import lip_reader
+from speech_haptic_pipeline import SpeechHapticPipeline
+from tts_service import TTSManager
 
 # Load .env from backend directory so GEMINI_API_KEY is found
 _load_env = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env.local")
 load_dotenv(_load_env)
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "")
 
 app = FastAPI(
     title="HapticPhonix Backend",
@@ -38,6 +41,8 @@ app.add_middleware(
 
 # Global components
 media_processor = MediaPipeProcessor()
+speech_pipeline = SpeechHapticPipeline(GEMINI_API_KEY)
+tts_manager = TTSManager(ELEVENLABS_API_KEY)
 
 # Set up callbacks for phoneme engine
 phoneme_engine.set_haptic_callback(
@@ -333,6 +338,9 @@ async def startup_event():
         load_lesson(default_lesson)
         print("Default lesson loaded")
 
+    # Wire up speech-haptic pipeline broadcast to WebSocket manager
+    speech_pipeline.set_broadcast_callback(speech_haptic_ws_manager.broadcast)
+
 
 # ── Lip Reading Endpoint ────────────────────────────────────────────────────
 
@@ -481,10 +489,78 @@ async def translate_text(request: Request):
         print(f"Gemini translation error: {e}")
         return JSONResponse(status_code=500, content={"error": str(e)})
 
+
+# ── Speech-to-Haptic Pipeline ────────────────────────────────────────────────
+
+@app.websocket("/ws/speech-haptic")
+async def websocket_speech_haptic(websocket: WebSocket):
+    """
+    Endpoint for phones to receive real-time speech-haptic events.
+    Each message contains a transcript chunk + haptic vibration pattern.
+    """
+    await speech_haptic_ws_manager.connect(websocket)
+    try:
+        while True:
+            # Keep alive — listen for control messages from client
+            message = await websocket.receive_text()
+            try:
+                data = json.loads(message)
+                if data.get("type") == "ping":
+                    await websocket.send_json({"type": "pong"})
+            except json.JSONDecodeError:
+                pass
+    except WebSocketDisconnect:
+        speech_haptic_ws_manager.disconnect(websocket)
+    except Exception as e:
+        print(f"Speech-haptic WS error: {e}")
+        speech_haptic_ws_manager.disconnect(websocket)
+
+
+@app.post("/api/speech-haptic/start")
+async def start_speech_haptic():
+    """Start the speech-to-haptic pipeline (begins mic capture + Gemini STT)."""
+    if speech_pipeline.status.running:
+        return {"message": "Pipeline already running", **speech_pipeline.get_status()}
+    speech_pipeline.start()
+    
+    # [CUSTOM] Trigger ElevenLabs "Start Listening" cue
+    async def trigger_tts_cue():
+        audio_b64 = await tts_manager.generate_audio_base64("Listening started")
+        if audio_b64:
+            await speech_haptic_ws_manager.broadcast({
+                "type": "tts_cue",
+                "audio_base64": audio_b64,
+                "timestamp": time.time()
+            })
+    
+    asyncio.create_task(trigger_tts_cue())
+    
+    return {"message": "Pipeline started", **speech_pipeline.get_status()}
+
+
+@app.post("/api/speech-haptic/stop")
+async def stop_speech_haptic():
+    """Stop the speech-to-haptic pipeline."""
+    if not speech_pipeline.status.running:
+        return {"message": "Pipeline not running", **speech_pipeline.get_status()}
+    await speech_pipeline.stop()
+    return {"message": "Pipeline stopped", **speech_pipeline.get_status()}
+
+
+@app.get("/api/speech-haptic/status")
+async def speech_haptic_status():
+    """Get current speech-haptic pipeline status."""
+    return {
+        **speech_pipeline.get_status(),
+        "connected_clients": len(speech_haptic_ws_manager.clients),
+    }
+
+
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))
-    print(f"🚀 Starting HapticPhonix server on 0.0.0.0:{port}")
-    print(f"📱 Video endpoint: ws://localhost:{port}/ws/video")
-    print(f"👁️  Viewer endpoint: ws://localhost:{port}/ws/viewer")
-    print(f"📚 Lessons endpoint: http://localhost:{port}/lessons")
+    print(f"[*] Starting HapticPhonix server on 0.0.0.0:{port}")
+    print(f"[VIDEO]  ws://localhost:{port}/ws/video")
+    print(f"[VIEWER] ws://localhost:{port}/ws/viewer")
+    print(f"[HAPTIC] ws://localhost:{port}/ws/speech-haptic")
+    print(f"[LEARN]  http://localhost:{port}/lessons")
     uvicorn.run(app, host="0.0.0.0", port=port)

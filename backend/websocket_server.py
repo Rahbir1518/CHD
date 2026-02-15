@@ -16,13 +16,13 @@ class ConnectionManager:
         self.active_connections.append(websocket)
         if metadata:
             self.connection_metadata[websocket] = metadata
-        print(f"📱 Phone connected. Total source connections: {len(self.active_connections)}")
+        print(f"[PHONE] Phone connected. Total source connections: {len(self.active_connections)}")
 
     def disconnect(self, websocket: WebSocket):
         if websocket in self.active_connections:
             self.active_connections.remove(websocket)
             self.connection_metadata.pop(websocket, None)
-        print(f"📱 Phone disconnected. Total source connections: {len(self.active_connections)}")
+        print(f"[PHONE] Phone disconnected. Total source connections: {len(self.active_connections)}")
     
     def get_metadata(self, websocket: WebSocket) -> Optional[Dict]:
         return self.connection_metadata.get(websocket)
@@ -39,13 +39,13 @@ class ViewerManager:
         self.viewers.append(websocket)
         if metadata:
             self.viewer_metadata[websocket] = metadata
-        print(f"👁️  Dashboard viewer connected. Total viewers: {len(self.viewers)}")
+        print(f"[VIEWER] Dashboard viewer connected. Total viewers: {len(self.viewers)}")
 
     def disconnect(self, websocket: WebSocket):
         if websocket in self.viewers:
             self.viewers.remove(websocket)
             self.viewer_metadata.pop(websocket, None)
-        print(f"👁️  Dashboard viewer disconnected. Total viewers: {len(self.viewers)}")
+        print(f"[VIEWER] Dashboard viewer disconnected. Total viewers: {len(self.viewers)}")
     
     def get_metadata(self, websocket: WebSocket) -> Optional[Dict]:
         return self.viewer_metadata.get(websocket)
@@ -158,8 +158,39 @@ class SpeechAnalysisManager:
         self.current_transcript = new_text
 
 
+class SpeechHapticConnectionManager:
+    """Manages WebSocket connections for the speech-haptic pipeline channel."""
+
+    def __init__(self):
+        self.clients: List[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.clients.append(websocket)
+        print(f"[SPEECH-HAPTIC] Client connected. Total: {len(self.clients)}")
+
+    def disconnect(self, websocket: WebSocket):
+        if websocket in self.clients:
+            self.clients.remove(websocket)
+        print(f"[SPEECH-HAPTIC] Client disconnected. Total: {len(self.clients)}")
+
+    async def broadcast(self, data: dict):
+        """Send a speech-haptic event to all connected clients."""
+        if not self.clients:
+            return
+        disconnected = []
+        for ws in self.clients:
+            try:
+                await ws.send_json(data)
+            except Exception:
+                disconnected.append(ws)
+        for ws in disconnected:
+            self.disconnect(ws)
+
+
 # Global instances
 manager = ConnectionManager()
 viewer_manager = ViewerManager()
 haptic_manager = HapticEventManager()
 speech_manager = SpeechAnalysisManager()
+speech_haptic_ws_manager = SpeechHapticConnectionManager()
