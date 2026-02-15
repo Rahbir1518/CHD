@@ -148,7 +148,7 @@ export default function TranscriptionPanel({
     };
   }, [stopListening]);
 
-  // Transcribe audio via backend Gemini endpoint
+  // Transcribe audio via backend ElevenLabs endpoint
   const transcribeAudio = useCallback(
     async (audioBase64: string, mimeType: string) => {
       try {
@@ -188,7 +188,7 @@ export default function TranscriptionPanel({
     [autoTranslate, onTranscript]
   );
 
-  // Translate via backend Gemini endpoint
+  // Translate via backend (Gemini) endpoint
   const translateText = useCallback(
     async (text: string) => {
       if (!text.trim()) return;
