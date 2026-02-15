@@ -1,5 +1,5 @@
 <p align="center">
-  <strong>🔥 HapticPhonix (CHD)</strong>
+  <strong> HapticPhonix (CHD)</strong>
 </p>
 
 <p align="center">
