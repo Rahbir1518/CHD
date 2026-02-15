@@ -1,1 +1,240 @@
-# this is mediapipe_processor.py — MediaPipe Face Mesh lip landmark extraction (indices 0, 13, 14, 78, 308)
+import cv2
+import mediapipe as mp
+import base64
+import numpy as np
+from typing import List, Dict, Tuple, Optional
+
+
+class MediaPipeProcessor:
+    """Processes video frames using MediaPipe Face Mesh to extract lip landmarks."""
+    
+    # Key lip landmark indices as per MediaPipe Face Mesh
+    LIP_LANDMARKS = [0, 13, 14, 78, 308]  # Cupid's bow, inner lip top/bottom, outer corners
+    
+    # Full outer lip contour for bounding box
+    OUTER_LIP_LANDMARKS = [
+        61, 146, 91, 181, 84, 17, 314, 405, 321, 375, 291,
+        409, 270, 269, 267, 0, 37, 39, 40, 185
+    ]
+    # Full inner lip contour
+    INNER_LIP_LANDMARKS = [
+        78, 95, 88, 178, 87, 14, 317, 402, 318, 324, 308,
+        415, 310, 311, 312, 13, 82, 81, 80, 191
+    ]
+    # All lip landmarks combined (for bounding box calculation)
+    ALL_LIP_LANDMARKS = list(set(LIP_LANDMARKS + OUTER_LIP_LANDMARKS + INNER_LIP_LANDMARKS))
+    
+    def __init__(self):
+        """Initialize MediaPipe Face Mesh detector using the tasks API."""
+        self.use_new_api = True
+        self.face_landmarker = None
+        
+        import os
+        # Ensure we have an absolute path to the model file
+        dir_path = os.path.dirname(os.path.abspath(__file__))
+        model_path = os.path.join(dir_path, "face_landmarker.task")
+        
+        try:
+            if not os.path.exists(model_path):
+                print(f"MediaPipe model not found at {model_path}")
+                # Try relative as fallback
+                model_path = "face_landmarker.task"
+                if not os.path.exists(model_path):
+                    self.use_new_api = False
+                    return
+
+            try:
+                # Standard initialization with options
+                BaseOptions = mp.tasks.BaseOptions
+                FaceLandmarker = mp.tasks.vision.FaceLandmarker
+                FaceLandmarkerOptions = mp.tasks.vision.FaceLandmarkerOptions
+                VisionRunningMode = mp.tasks.vision.RunningMode
+
+                options = FaceLandmarkerOptions(
+                    base_options=BaseOptions(model_asset_path=model_path),
+                    running_mode=VisionRunningMode.IMAGE,
+                    num_faces=1,
+                    min_face_detection_confidence=0.5,
+                    min_face_presence_confidence=0.5,
+                    min_tracking_confidence=0.5,
+                )
+                self.face_landmarker = FaceLandmarker.create_from_options(options)
+                print(f"MediaPipe: initialized with options using {model_path}")
+            except Exception as e:
+                print(f"MediaPipe options init failed: {e}. Trying simple model_path...")
+                # Fallback to high-level API if options fail (verified working in debug)
+                self.face_landmarker = mp.tasks.vision.FaceLandmarker.create_from_model_path(model_path)
+                print(f"MediaPipe: initialized with model_path using {model_path}")
+            
+        except Exception as e:
+            print(f"MediaPipe initialization failed completely: {e}")
+            self.use_new_api = False
+    
+    def decode_frame(self, frame_data: str) -> Optional[np.ndarray]:
+        """Decode base64 frame data to OpenCV image."""
+        try:
+            if not frame_data or not isinstance(frame_data, str):
+                return None
+            # Remove data URL prefix if present (phone sends data:image/jpeg;base64,...)
+            s = frame_data.strip()
+            if s.startswith("data:image"):
+                if "," in s:
+                    s = s.split(",", 1)[1]
+                else:
+                    return None
+            frame_bytes = base64.b64decode(s)
+            frame_array = np.frombuffer(frame_bytes, dtype=np.uint8)
+            frame = cv2.imdecode(frame_array, cv2.IMREAD_COLOR)
+            if frame is None or frame.size == 0:
+                return None
+            return frame
+        except Exception as e:
+            print(f"Error decoding frame: {e}")
+            return None
+    
+    def encode_frame(self, frame: np.ndarray) -> str:
+        """Encode OpenCV image to base64 string."""
+        try:
+            _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
+            frame_base64 = base64.b64encode(buffer).decode('utf-8')
+            return frame_base64
+        except Exception as e:
+            print(f"Error encoding frame: {e}")
+            return ""
+    
+    def extract_lip_landmarks(self, frame: np.ndarray) -> Tuple[List[Dict[str, float]], List[Dict[str, float]], Optional[Dict]]:
+        """Extract lip landmarks from frame using MediaPipe.
+        Returns: (key_landmarks, all_lip_landmarks, bounding_box)"""
+        key_landmarks = []
+        all_landmarks = []
+        bounding_box = None
+        
+        if self.use_new_api is None:
+            return key_landmarks, all_landmarks, bounding_box
+        
+        # Ensure contiguous uint8 RGB for MediaPipe
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        rgb_frame = np.ascontiguousarray(rgb_frame)
+        
+        try:
+            mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
+            face_landmarker_result = self.face_landmarker.detect(mp_image)
+            
+            if face_landmarker_result.face_landmarks:
+                face_landmarks = face_landmarker_result.face_landmarks[0]
+                
+                # Key landmarks
+                for idx in self.LIP_LANDMARKS:
+                    if idx < len(face_landmarks):
+                        landmark = face_landmarks[idx]
+                        key_landmarks.append({
+                            'x': landmark.x, 'y': landmark.y,
+                            'z': landmark.z, 'index': idx
+                        })
+                
+                # All lip landmarks for bounding box
+                for idx in self.ALL_LIP_LANDMARKS:
+                    if idx < len(face_landmarks):
+                        landmark = face_landmarks[idx]
+                        all_landmarks.append({
+                            'x': landmark.x, 'y': landmark.y,
+                            'z': landmark.z, 'index': idx
+                        })
+        except Exception as e:
+            print(f"Error in face landmark detection: {e}")
+        
+        # Compute bounding box from all lip landmarks
+        if all_landmarks:
+            xs = [l['x'] for l in all_landmarks]
+            ys = [l['y'] for l in all_landmarks]
+            padding = 0.02  # 2% padding
+            bounding_box = {
+                'x': max(0, min(xs) - padding),
+                'y': max(0, min(ys) - padding),
+                'width': min(1, max(xs) - min(xs) + padding * 2),
+                'height': min(1, max(ys) - min(ys) + padding * 2)
+            }
+        
+        return key_landmarks, all_landmarks, bounding_box
+    
+    def process_frame(self, frame_data: str) -> Dict:
+        """Process a frame: decode, extract landmarks, re-encode."""
+        frame = self.decode_frame(frame_data)
+        if frame is None:
+            return {'error': 'Failed to decode frame'}
+        
+        # Extract lip landmarks and bounding box
+        key_landmarks, all_lip_landmarks, lip_bounding_box = self.extract_lip_landmarks(frame)
+        
+        # Draw bounding box on the frame before encoding
+        if lip_bounding_box:
+            h, w = frame.shape[:2]
+            x1 = int(lip_bounding_box['x'] * w)
+            y1 = int(lip_bounding_box['y'] * h)
+            x2 = int((lip_bounding_box['x'] + lip_bounding_box['width']) * w)
+            y2 = int((lip_bounding_box['y'] + lip_bounding_box['height']) * h)
+            # Draw green bounding box
+            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+            # Label
+            cv2.putText(frame, 'LIPS', (x1, y1 - 8),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+        
+        processed_frame_base64 = self.encode_frame(frame)
+        
+        return {
+            'frame_base64': processed_frame_base64,
+            'landmarks': key_landmarks,
+            'landmark_count': len(key_landmarks),
+            'lip_bounding_box': lip_bounding_box,
+            'all_lip_landmarks': all_lip_landmarks
+        }
+    
+    def annotate_frame(self, frame: np.ndarray, landmarks: List[Dict[str, float]]) -> np.ndarray:
+        """Draw lip landmarks on frame for visualization."""
+        if not landmarks:
+            return frame
+        
+        # Convert to RGB for drawing
+        annotated_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        height, width = annotated_frame.shape[:2]
+        
+        # Draw landmarks
+        for landmark in landmarks:
+            x = int(landmark['x'] * width)
+            y = int(landmark['y'] * height)
+            
+            # Different colors for different landmarks
+            if landmark['index'] == 0:  # Cupid's bow - red
+                color = (255, 0, 0)
+            elif landmark['index'] in [13, 14]:  # Inner lip - green
+                color = (0, 255, 0)
+            else:  # Outer corners - blue
+                color = (0, 0, 255)
+            
+            cv2.circle(annotated_frame, (x, y), 3, color, -1)
+            cv2.putText(annotated_frame, str(landmark['index']), 
+                       (x+5, y-5), cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1)
+        
+        # Convert back to BGR
+        return cv2.cvtColor(annotated_frame, cv2.COLOR_RGB2BGR)
+    
+    def close(self):
+        """Clean up MediaPipe resources."""
+        try:
+            if self.use_new_api and hasattr(self, 'face_landmarker'):
+                self.face_landmarker.close()
+            elif not self.use_new_api and hasattr(self, 'face_mesh'):
+                self.face_mesh.close()
+        except Exception as e:
+            print(f"Error closing MediaPipe: {e}")
+
+
+# Utility function for standalone use
+def process_frame_with_mediapipe(frame_data: str) -> Dict:
+    """Convenience function to process a frame with MediaPipe."""
+    processor = MediaPipeProcessor()
+    try:
+        result = processor.process_frame(frame_data)
+        return result
+    finally:
+        processor.close()

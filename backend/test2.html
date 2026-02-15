@@ -1,0 +1,1485 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HapticPhonix | Feel the Sound. Master Speech.</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Space Grotesk', 'sans-serif'],
+                    },
+                    colors: {
+                        'phonix': {
+                            black: '#0a0a0a',
+                            dark: '#111111',
+                            gray: '#1a1a1a',
+                            copper: '#B87333',
+                            gold: '#D4A574',
+                            cream: '#F5F1E8',
+                            orange: '#E67E22',
+                            white: '#F5F5F5',
+                            glow: '#FFD700'
+                        }
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'float': 'float 6s ease-in-out infinite',
+                        'vibrate': 'vibrate 0.3s ease-in-out infinite',
+                        'glow': 'glow 2s ease-in-out infinite alternate',
+                        'wave': 'wave 3s ease-in-out infinite',
+                        'marquee': 'marquee 20s linear infinite',
+                        'marquee-reverse': 'marquee-reverse 20s linear infinite',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-20px)' },
+                        },
+                        vibrate: {
+                            '0%, 100%': { transform: 'translateX(0)' },
+                            '25%': { transform: 'translateX(-2px)' },
+                            '75%': { transform: 'translateX(2px)' },
+                        },
+                        glow: {
+                            '0%': { boxShadow: '0 0 5px rgba(184, 115, 51, 0.5), 0 0 10px rgba(184, 115, 51, 0.3)' },
+                            '100%': { boxShadow: '0 0 20px rgba(212, 165, 116, 0.8), 0 0 40px rgba(212, 165, 116, 0.4)' }
+                        },
+                        wave: {
+                            '0%, 100%': { transform: 'translateY(0) scaleY(1)' },
+                            '50%': { transform: 'translateY(-10px) scaleY(1.1)' },
+                        },
+                        marquee: {
+                            '0%': { transform: 'translateX(0%)' },
+                            '100%': { transform: 'translateX(-50%)' },
+                        },
+                        'marquee-reverse': {
+                            '0%': { transform: 'translateX(-50%)' },
+                            '100%': { transform: 'translateX(0%)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        body {
+            background-color: #0a0a0a;
+            color: #F5F5F5;
+            overflow-x: hidden;
+            cursor: none;
+        }
+        
+        /* Custom Cursor */
+        .cursor-dot,
+        .cursor-outline {
+            position: fixed;
+            top: 0;
+            left: 0;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            z-index: 9999;
+            pointer-events: none;
+        }
+        
+        .cursor-dot {
+            width: 8px;
+            height: 8px;
+            background: linear-gradient(135deg, #D4A574, #B87333);
+            box-shadow: 0 0 10px rgba(212, 165, 116, 0.8);
+        }
+        
+        .cursor-outline {
+            width: 40px;
+            height: 40px;
+            border: 2px solid rgba(212, 165, 116, 0.5);
+            transition: width 0.2s, height 0.2s, background-color 0.2s;
+            box-shadow: 0 0 20px rgba(184, 115, 51, 0.3);
+        }
+        
+        .cursor-outline.hover {
+            width: 60px;
+            height: 60px;
+            background-color: rgba(184, 115, 51, 0.1);
+            border-color: rgba(212, 165, 116, 0.8);
+        }
+        
+        .cursor-outline.click {
+            width: 30px;
+            height: 30px;
+            background-color: rgba(212, 165, 116, 0.3);
+        }
+        
+        /* Grain Overlay */
+        .grain-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 9998;
+            opacity: 0.03;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+        }
+        
+        /* Glowing Text */
+        .gradient-text {
+            background: linear-gradient(135deg, #F5F1E8 0%, #D4A574 50%, #B87333 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .glow-text {
+            text-shadow: 0 0 20px rgba(212, 165, 116, 0.5), 0 0 40px rgba(184, 115, 51, 0.3);
+        }
+        
+        /* Metallic Text Effect like image 2 */
+        .metallic-text {
+            background: linear-gradient(135deg, #F5F1E8 0%, #D4A574 30%, #B87333 50%, #D4A574 70%, #F5F1E8 100%);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: shimmer 3s linear infinite;
+            text-shadow: 0 0 30px rgba(184, 115, 51, 0.5);
+        }
+        
+        @keyframes shimmer {
+            to { background-position: 200% center; }
+        }
+        
+        /* Glass Panel with Glow */
+        .glass-panel {
+            background: rgba(26, 26, 26, 0.6);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(212, 165, 116, 0.15);
+            transition: all 0.3s ease;
+        }
+        
+        .glass-panel:hover {
+            border-color: rgba(212, 165, 116, 0.4);
+            box-shadow: 0 0 30px rgba(184, 115, 51, 0.2), inset 0 0 20px rgba(212, 165, 116, 0.05);
+        }
+        
+        /* Feature Cards with Edge Glow */
+        .feature-card {
+            position: relative;
+            background: rgba(26, 26, 26, 0.8);
+            border: 1px solid rgba(212, 165, 116, 0.1);
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            overflow: hidden;
+        }
+        
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            inset: -1px;
+            background: linear-gradient(135deg, transparent, rgba(212, 165, 116, 0.3), transparent);
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            z-index: -1;
+            border-radius: inherit;
+        }
+        
+        .feature-card:hover::before {
+            opacity: 1;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            border-color: rgba(212, 165, 116, 0.5);
+            box-shadow: 
+                0 20px 40px rgba(184, 115, 51, 0.15),
+                0 0 60px rgba(212, 165, 116, 0.1),
+                inset 0 0 30px rgba(212, 165, 116, 0.05);
+        }
+        
+        /* Edge Glow Effect */
+        .edge-glow {
+            position: relative;
+        }
+        
+        .edge-glow::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            padding: 1px;
+            background: linear-gradient(135deg, rgba(212, 165, 116, 0.5), transparent, rgba(184, 115, 51, 0.3));
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .edge-glow:hover::after {
+            opacity: 1;
+        }
+        
+        /* Phoneme Bars */
+        .phoneme-bar {
+            animation: phonemePulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes phonemePulse {
+            0%, 100% { opacity: 0.4; transform: scaleY(0.8); }
+            50% { opacity: 1; transform: scaleY(1.2); }
+        }
+        
+        /* Scroll Indicator */
+        .scroll-indicator {
+            animation: scrollBounce 2s infinite;
+        }
+        
+        @keyframes scrollBounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(10px); }
+        }
+        
+        /* Haptic Ripple */
+        .haptic-ripple {
+            position: absolute;
+            border: 2px solid rgba(212, 165, 116, 0.5);
+            border-radius: 50%;
+            animation: ripple 2s ease-out infinite;
+            pointer-events: none;
+        }
+        
+        @keyframes ripple {
+            0% { width: 0; height: 0; opacity: 1; }
+            100% { width: 100px; height: 100px; opacity: 0; }
+        }
+        
+        /* Wave Animation for Cards */
+        .wave-bg {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 100%;
+            background: linear-gradient(to top, rgba(184, 115, 51, 0.1), transparent);
+            transform-origin: bottom;
+            animation: waveMotion 4s ease-in-out infinite;
+        }
+        
+        @keyframes waveMotion {
+            0%, 100% { transform: scaleY(0.3); }
+            50% { transform: scaleY(0.6); }
+        }
+        
+        /* Marquee Banner Styles */
+        .marquee-container {
+            overflow: hidden;
+            white-space: nowrap;
+            position: relative;
+        }
+        
+        .marquee-content {
+            display: inline-block;
+            animation: marquee 30s linear infinite;
+        }
+        
+        .marquee-content-reverse {
+            display: inline-block;
+            animation: marquee-reverse 30s linear infinite;
+        }
+        
+        /* Three.js Canvas */
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: all;
+        }
+        
+        /* Content Layer */
+        .content-layer {
+            position: relative;
+            z-index: 10;
+        }
+        
+        /* Accessibility Focus Styles */
+        *:focus-visible {
+            outline: 2px solid #D4A574;
+            outline-offset: 4px;
+        }
+        
+        /* Reduced Motion */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+        
+        /* High Contrast Mode Support */
+        @media (prefers-contrast: high) {
+            .glass-panel {
+                border: 2px solid #D4A574;
+            }
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- Custom Cursor -->
+    <div class="cursor-dot"></div>
+    <div class="cursor-outline"></div>
+
+    <!-- Grain Overlay -->
+    <div class="grain-overlay"></div>
+
+    <!-- Three.js Background -->
+    <div id="canvas-container"></div>
+
+    <!-- Navigation -->
+    <nav id="navbar" class="fixed top-0 left-0 w-full z-50 transition-all duration-500 opacity-0 -translate-y-full">
+        <div class="glass-panel border-b border-white/5">
+            <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-3 group cursor-pointer interactive-element">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-phonix-copper to-phonix-gold flex items-center justify-center relative overflow-hidden edge-glow">
+                        <div class="absolute inset-0 bg-white/20 animate-pulse-slow"></div>
+                        <svg class="w-5 h-5 text-white relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path>
+                        </svg>
+                    </div>
+                    <span class="font-display font-bold text-xl tracking-tight text-white group-hover:text-phonix-gold transition-colors">
+                        Haptic<span class="text-phonix-copper">Phonix</span>
+                    </span>
+                </div>
+
+                <div class="hidden md:flex items-center gap-8">
+                    <a href="#features" class="nav-link text-sm font-medium text-gray-400 hover:text-white transition-colors interactive-element">Features</a>
+                    <a href="#technology" class="nav-link text-sm font-medium text-gray-400 hover:text-white transition-colors interactive-element">Technology</a>
+                    <a href="#lessons" class="nav-link text-sm font-medium text-gray-400 hover:text-white transition-colors interactive-element">Lessons</a>
+                    <a href="#dashboard" class="nav-link text-sm font-medium text-gray-400 hover:text-white transition-colors interactive-element">Dashboard</a>
+                    <a href="#demo" class="nav-link text-sm font-medium text-gray-400 hover:text-white transition-colors interactive-element">Demo</a>
+                </div>
+
+                <div class="flex items-center gap-4">
+                    <button class="hidden md:block text-sm font-medium text-gray-400 hover:text-white transition-colors interactive-element">Sign In</button>
+                    <button class="px-6 py-2.5 bg-gradient-to-r from-phonix-copper to-phonix-gold text-white font-semibold text-sm rounded-full hover:shadow-lg hover:shadow-phonix-copper/25 transition-all transform hover:scale-105 interactive-element edge-glow">
+                        Get Started
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="relative min-h-screen flex items-center justify-center overflow-hidden">
+        <div class="content-layer max-w-7xl mx-auto px-6 py-20 grid lg:grid-cols-2 gap-12 items-center">
+            
+            <!-- Left Content -->
+            <div class="space-y-8 hero-content">
+                <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-panel border border-phonix-copper/20 edge-glow">
+                    <span class="w-2 h-2 rounded-full bg-phonix-copper animate-pulse"></span>
+                    <span class="text-xs font-medium text-phonix-gold uppercase tracking-widest">AI-Powered Speech Learning</span>
+                </div>
+
+                <h1 class="font-display font-bold text-5xl md:text-7xl leading-tight glow-text">
+                    Feel the <span class="gradient-text">Sound</span>.<br>
+                    Master <span class="text-phonix-copper">Speech</span>.
+                </h1>
+
+                <p class="text-lg text-gray-400 max-w-xl leading-relaxed">
+                    HapticPhonix uses computer vision, AI lip-reading, and haptic feedback to create a revolutionary pronunciation learning experience. For deaf/hard-of-hearing learners and anyone seeking perfect speech.
+                </p>
+
+                <div class="flex flex-wrap gap-4">
+                    <button class="group px-8 py-4 bg-gradient-to-r from-phonix-copper to-phonix-gold text-white font-semibold rounded-full hover:shadow-2xl hover:shadow-phonix-copper/30 transition-all transform hover:scale-105 flex items-center gap-2 interactive-element edge-glow">
+                        <span>Start Learning</span>
+                        <svg class="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
+                        </svg>
+                    </button>
+                    <button class="px-8 py-4 glass-panel text-white font-semibold rounded-full hover:bg-white/5 transition-all flex items-center gap-2 border border-white/10 interactive-element edge-glow">
+                        <svg class="w-5 h-5 text-phonix-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span>Watch Demo</span>
+                    </button>
+                </div>
+
+                <!-- Stats with Glow -->
+                <div class="grid grid-cols-3 gap-8 pt-8 border-t border-white/10">
+                    <div class="group interactive-element">
+                        <div class="text-3xl font-display font-bold text-white group-hover:text-phonix-gold transition-colors">98%</div>
+                        <div class="text-sm text-gray-500">Accuracy</div>
+                    </div>
+                    <div class="group interactive-element">
+                        <div class="text-3xl font-display font-bold text-white group-hover:text-phonix-gold transition-colors">50+</div>
+                        <div class="text-sm text-gray-500">Phonemes</div>
+                    </div>
+                    <div class="group interactive-element">
+                        <div class="text-3xl font-display font-bold text-white group-hover:text-phonix-gold transition-colors">8D</div>
+                        <div class="text-sm text-gray-500">Haptic Audio</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Visual - Phone Mockup -->
+            <div class="relative hero-visual hidden lg:block">
+                <div class="relative w-full aspect-square max-w-lg mx-auto">
+                    <!-- Floating Phone Mockup -->
+                    <div class="absolute inset-0 flex items-center justify-center">
+                        <div class="relative w-72 h-[600px] bg-gradient-to-b from-gray-800 to-gray-900 rounded-[3rem] border-4 border-gray-700 shadow-2xl overflow-hidden transform rotate-12 hover:rotate-0 transition-transform duration-700 edge-glow interactive-element">
+                            <!-- Screen -->
+                            <div class="absolute inset-2 bg-black rounded-[2.5rem] overflow-hidden">
+                                <!-- Camera Feed Simulation -->
+                                <div class="absolute inset-0 bg-gradient-to-br from-gray-900 via-phonix-dark to-black">
+                                    <!-- Face Mesh Overlay -->
+                                    <svg class="absolute inset-0 w-full h-full opacity-30" viewBox="0 0 300 600">
+                                        <defs>
+                                            <linearGradient id="meshGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                <stop offset="0%" style="stop-color:#D4A574;stop-opacity:0.8" />
+                                                <stop offset="100%" style="stop-color:#B87333;stop-opacity:0.4" />
+                                            </linearGradient>
+                                        </defs>
+                                        <!-- Face outline -->
+                                        <ellipse cx="150" cy="250" rx="80" ry="100" fill="none" stroke="url(#meshGrad)" stroke-width="1"/>
+                                        <!-- Lip region -->
+                                        <rect x="110" y="280" width="80" height="40" fill="none" stroke="#D4A574" stroke-width="2" rx="20"/>
+                                        <!-- Landmarks -->
+                                        <circle cx="130" cy="300" r="3" fill="#D4A574" class="animate-pulse"/>
+                                        <circle cx="150" cy="310" r="3" fill="#D4A574" class="animate-pulse" style="animation-delay: 0.2s"/>
+                                        <circle cx="170" cy="300" r="3" fill="#D4A574" class="animate-pulse" style="animation-delay: 0.4s"/>
+                                    </svg>
+                                    
+                                    <!-- Haptic Feedback Indicator -->
+                                    <div class="absolute bottom-20 left-1/2 -translate-x-1/2">
+                                        <div class="flex items-center gap-2 px-4 py-2 rounded-full bg-phonix-copper/20 border border-phonix-copper/40 edge-glow">
+                                            <div class="w-2 h-2 rounded-full bg-phonix-copper animate-vibrate"></div>
+                                            <span class="text-xs text-phonix-gold font-medium">Vibrating: /æ/ vowel</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Notch -->
+                                <div class="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-7 bg-black rounded-b-2xl"></div>
+                            </div>
+                            
+                            <!-- Side Button -->
+                            <div class="absolute right-[-4px] top-32 w-1 h-16 bg-gray-600 rounded-l"></div>
+                        </div>
+                    </div>
+
+                    <!-- Orbiting Particles with Glow -->
+                    <div class="absolute inset-0 animate-float">
+                        <div class="absolute top-10 right-10 w-20 h-20 rounded-full bg-phonix-copper/20 blur-xl animate-glow"></div>
+                        <div class="absolute bottom-20 left-10 w-32 h-32 rounded-full bg-phonix-gold/10 blur-2xl animate-glow" style="animation-delay: 1s"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scroll Indicator -->
+        <div class="absolute bottom-8 left-1/2 -translate-x-1/2 content-layer scroll-indicator interactive-element">
+            <div class="w-6 h-10 rounded-full border-2 border-white/20 flex justify-center pt-2 edge-glow">
+                <div class="w-1 h-2 bg-phonix-copper rounded-full animate-bounce"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Scrolling Marquee Banner (Like Image 2) -->
+    <section class="relative py-8 overflow-hidden border-y border-white/10 bg-black/50 backdrop-blur-sm">
+        <div class="marquee-container">
+            <div class="marquee-content flex items-center gap-8">
+                <span class="text-6xl md:text-8xl font-display font-bold metallic-text tracking-tighter">8D HAPTICS</span>
+                <span class="text-4xl text-phonix-copper/50">///</span>
+                <span class="text-6xl md:text-8xl font-display font-bold metallic-text tracking-tighter">REAL-TIME PROCESSING</span>
+                <span class="text-4xl text-phonix-copper/50">///</span>
+                <span class="text-6xl md:text-8xl font-display font-bold metallic-text tracking-tighter">LIP READING AI</span>
+                <span class="text-4xl text-phonix-copper/50">///</span>
+                <span class="text-6xl md:text-8xl font-display font-bold metallic-text tracking-tighter">8D HAPTICS</span>
+                <span class="text-4xl text-phonix-copper/50">///</span>
+                <span class="text-6xl md:text-8xl font-display font-bold metallic-text tracking-tighter">REAL-TIME PROCESSING</span>
+                <span class="text-4xl text-phonix-copper/50">///</span>
+                <span class="text-6xl md:text-8xl font-display font-bold metallic-text tracking-tighter">LIP READING AI</span>
+                <span class="text-4xl text-phonix-copper/50">///</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Reverse Marquee -->
+    <section class="relative py-8 overflow-hidden border-b border-white/10 bg-black/30 backdrop-blur-sm">
+        <div class="marquee-container">
+            <div class="marquee-content-reverse flex items-center gap-8">
+                <span class="text-4xl md:text-6xl font-display font-bold text-white/20 tracking-tighter">PHONEME ANALYSIS</span>
+                <span class="text-3xl text-phonix-gold/30">///</span>
+                <span class="text-4xl md:text-6xl font-display font-bold text-white/20 tracking-tighter">HAPTIC FEEDBACK</span>
+                <span class="text-3xl text-phonix-gold/30">///</span>
+                <span class="text-4xl md:text-6xl font-display font-bold text-white/20 tracking-tighter">AI VISION</span>
+                <span class="text-3xl text-phonix-gold/30">///</span>
+                <span class="text-4xl md:text-6xl font-display font-bold text-white/20 tracking-tighter">PHONEME ANALYSIS</span>
+                <span class="text-3xl text-phonix-gold/30">///</span>
+                <span class="text-4xl md:text-6xl font-display font-bold text-white/20 tracking-tighter">HAPTIC FEEDBACK</span>
+                <span class="text-3xl text-phonix-gold/30">///</span>
+                <span class="text-4xl md:text-6xl font-display font-bold text-white/20 tracking-tighter">AI VISION</span>
+                <span class="text-3xl text-phonix-gold/30">///</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Live Pipeline Visualization -->
+    <section class="relative py-32 overflow-hidden">
+        <div class="content-layer max-w-7xl mx-auto px-6">
+            <div class="text-center mb-20">
+                <h2 class="font-display font-bold text-4xl md:text-5xl mb-6 glow-text">Real-Time <span class="gradient-text">Pipeline</span></h2>
+                <p class="text-gray-400 max-w-2xl mx-auto">From camera capture to haptic feedback in milliseconds. Watch the AI process speech in real-time.</p>
+            </div>
+
+            <!-- Pipeline Steps -->
+            <div class="grid md:grid-cols-4 gap-6">
+                <!-- Step 1: Capture -->
+                <div class="feature-card rounded-2xl p-6 relative overflow-hidden group interactive-element edge-glow">
+                    <div class="wave-bg"></div>
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-phonix-copper/10 rounded-full blur-3xl group-hover:bg-phonix-copper/20 transition-all"></div>
+                    <div class="relative z-10">
+                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-phonix-copper to-phonix-gold flex items-center justify-center mb-4 edge-glow">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            </svg>
+                        </div>
+                        <h3 class="font-display font-semibold text-xl mb-2">1. Capture</h3>
+                        <p class="text-sm text-gray-400">Phone camera streams video at 30fps. Microphone captures audio for pitch analysis.</p>
+                        <div class="mt-4 flex gap-1">
+                            <div class="h-1 w-8 bg-phonix-copper rounded-full phoneme-bar" style="animation-delay: 0s"></div>
+                            <div class="h-1 w-6 bg-phonix-copper/60 rounded-full phoneme-bar" style="animation-delay: 0.2s"></div>
+                            <div class="h-1 w-10 bg-phonix-copper/40 rounded-full phoneme-bar" style="animation-delay: 0.4s"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2: Process -->
+                <div class="feature-card rounded-2xl p-6 relative overflow-hidden group interactive-element edge-glow">
+                    <div class="wave-bg" style="animation-delay: 0.5s"></div>
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-phonix-gold/10 rounded-full blur-3xl group-hover:bg-phonix-gold/20 transition-all"></div>
+                    <div class="relative z-10">
+                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-phonix-gold to-phonix-copper flex items-center justify-center mb-4 edge-glow">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                            </svg>
+                        </div>
+                        <h3 class="font-display font-semibold text-xl mb-2">2. AI Process</h3>
+                        <p class="text-sm text-gray-400">MediaPipe detects lip landmarks. Gemini 2.0 Flash Vision reads lips in real-time.</p>
+                        <div class="mt-4 flex items-center gap-2">
+                            <div class="flex -space-x-2">
+                                <div class="w-6 h-6 rounded-full bg-phonix-copper/40 border border-black"></div>
+                                <div class="w-6 h-6 rounded-full bg-phonix-gold/40 border border-black"></div>
+                                <div class="w-6 h-6 rounded-full bg-white/20 border border-black"></div>
+                            </div>
+                            <span class="text-xs text-phonix-gold">Processing...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 3: Analyze -->
+                <div class="feature-card rounded-2xl p-6 relative overflow-hidden group interactive-element edge-glow">
+                    <div class="wave-bg" style="animation-delay: 1s"></div>
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl group-hover:bg-blue-500/20 transition-all"></div>
+                    <div class="relative z-10">
+                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mb-4 edge-glow">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                            </svg>
+                        </div>
+                        <h3 class="font-display font-semibold text-xl mb-2">3. Analyze</h3>
+                        <p class="text-sm text-gray-400">Phoneme engine matches sounds to patterns. Pitch analysis detects voice frequency.</p>
+                        <div class="mt-4 h-8 flex items-end gap-1">
+                            <div class="w-2 bg-phonix-copper/60 rounded-t phoneme-bar" style="height: 40%"></div>
+                            <div class="w-2 bg-phonix-copper/80 rounded-t phoneme-bar" style="height: 70%; animation-delay: 0.1s"></div>
+                            <div class="w-2 bg-phonix-copper rounded-t phoneme-bar" style="height: 100%; animation-delay: 0.2s"></div>
+                            <div class="w-2 bg-phonix-copper/80 rounded-t phoneme-bar" style="height: 60%; animation-delay: 0.3s"></div>
+                            <div class="w-2 bg-phonix-copper/60 rounded-t phoneme-bar" style="height: 30%; animation-delay: 0.4s"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 4: Feedback -->
+                <div class="feature-card rounded-2xl p-6 relative overflow-hidden group interactive-element edge-glow">
+                    <div class="wave-bg" style="animation-delay: 1.5s"></div>
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-green-500/10 rounded-full blur-3xl group-hover:bg-green-500/20 transition-all"></div>
+                    <div class="relative z-10">
+                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center mb-4 edge-glow">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                            </svg>
+                        </div>
+                        <h3 class="font-display font-semibold text-xl mb-2">4. Haptic Feedback</h3>
+                        <p class="text-sm text-gray-400">Phone vibrates with phoneme patterns. Laryngeal haptics simulate throat sensation.</p>
+                        <div class="mt-4 flex items-center gap-2">
+                            <div class="relative">
+                                <div class="w-8 h-8 rounded-full border-2 border-phonix-copper/40 animate-ping absolute"></div>
+                                <div class="w-8 h-8 rounded-full bg-phonix-copper/20 flex items-center justify-center relative edge-glow">
+                                    <div class="w-2 h-2 rounded-full bg-phonix-copper animate-vibrate"></div>
+                                </div>
+                            </div>
+                            <span class="text-xs text-green-400">Active</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Grid -->
+    <section id="features" class="relative py-32">
+        <div class="content-layer max-w-7xl mx-auto px-6">
+            <div class="grid lg:grid-cols-2 gap-16 items-center mb-32">
+                <div class="space-y-6">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-phonix-copper/10 border border-phonix-copper/20 text-phonix-gold text-xs font-medium uppercase tracking-wider edge-glow">
+                        Lip Reading AI
+                    </div>
+                    <h2 class="font-display font-bold text-4xl md:text-5xl leading-tight glow-text">
+                        See What You <span class="text-phonix-copper">Say</span>
+                    </h2>
+                    <p class="text-gray-400 text-lg leading-relaxed">
+                        Our Gemini 2.0 Flash Vision integration analyzes lip movements in real-time, converting visual speech into text with 98% accuracy. The AI detects phonemes, confidence scores, and mouth states instantly.
+                    </p>
+                    <ul class="space-y-4">
+                        <li class="flex items-start gap-3 interactive-element">
+                            <div class="w-6 h-6 rounded-full bg-phonix-copper/20 flex items-center justify-center flex-shrink-0 mt-0.5 edge-glow">
+                                <svg class="w-3 h-3 text-phonix-copper" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                </svg>
+                            </div>
+                            <span class="text-gray-300">Real-time lip landmark detection with MediaPipe</span>
+                        </li>
+                        <li class="flex items-start gap-3 interactive-element">
+                            <div class="w-6 h-6 rounded-full bg-phonix-copper/20 flex items-center justify-center flex-shrink-0 mt-0.5 edge-glow">
+                                <svg class="w-3 h-3 text-phonix-copper" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                </svg>
+                            </div>
+                            <span class="text-gray-300">Gemini 2.0 Flash Vision for text extraction</span>
+                        </li>
+                        <li class="flex items-start gap-3 interactive-element">
+                            <div class="w-6 h-6 rounded-full bg-phonix-copper/20 flex items-center justify-center flex-shrink-0 mt-0.5 edge-glow">
+                                <svg class="w-3 h-3 text-phonix-copper" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                </svg>
+                            </div>
+                            <span class="text-gray-300">Mouth state detection: closed, open, talking</span>
+                        </li>
+                    </ul>
+                </div>
+                
+                <!-- Visual Representation -->
+                <div class="relative interactive-element">
+                    <div class="absolute inset-0 bg-gradient-to-r from-phonix-copper/20 to-phonix-gold/20 rounded-3xl blur-3xl animate-glow"></div>
+                    <div class="relative glass-panel rounded-3xl p-8 border border-white/10 edge-glow">
+                        <div class="aspect-video bg-black rounded-2xl overflow-hidden relative">
+                            <!-- Simulated Camera Feed -->
+                            <div class="absolute inset-0 bg-gradient-to-br from-gray-900 to-black">
+                                <!-- Face Mesh -->
+                                <svg class="absolute inset-0 w-full h-full" viewBox="0 0 400 300">
+                                    <defs>
+                                        <linearGradient id="faceGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                            <stop offset="0%" style="stop-color:#D4A574;stop-opacity:0.6" />
+                                            <stop offset="100%" style="stop-color:#B87333;stop-opacity:0.3" />
+                                        </linearGradient>
+                                    </defs>
+                                    <!-- Face outline -->
+                                    <ellipse cx="200" cy="150" rx="100" ry="120" fill="none" stroke="url(#faceGrad)" stroke-width="1.5" opacity="0.6"/>
+                                    <!-- Lip bounding box -->
+                                    <rect x="150" y="180" width="100" height="50" rx="25" fill="none" stroke="#D4A574" stroke-width="2" stroke-dasharray="5,5" class="animate-pulse"/>
+                                    <!-- Landmarks -->
+                                    <g class="landmarks">
+                                        <circle cx="160" cy="200" r="4" fill="#D4A574">
+                                            <animate attributeName="opacity" values="1;0.5;1" dur="2s" repeatCount="indefinite"/>
+                                        </circle>
+                                        <circle cx="200" cy="210" r="4" fill="#D4A574">
+                                            <animate attributeName="opacity" values="1;0.5;1" dur="2s" begin="0.3s" repeatCount="indefinite"/>
+                                        </circle>
+                                        <circle cx="240" cy="200" r="4" fill="#D4A574">
+                                            <animate attributeName="opacity" values="1;0.5;1" dur="2s" begin="0.6s" repeatCount="indefinite"/>
+                                        </circle>
+                                        <circle cx="180" cy="190" r="3" fill="#B87333"/>
+                                        <circle cx="220" cy="190" r="3" fill="#B87333"/>
+                                    </g>
+                                </svg>
+                                
+                                <!-- Status Overlay -->
+                                <div class="absolute top-4 left-4 px-3 py-1.5 rounded-lg bg-black/60 backdrop-blur border border-white/10 edge-glow">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                                        <span class="text-xs font-mono text-gray-300">LIP_READING_ACTIVE</span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Detected Text -->
+                                <div class="absolute bottom-4 left-4 right-4">
+                                    <div class="glass-panel rounded-lg p-3 border border-phonix-copper/30 edge-glow">
+                                        <div class="text-xs text-phonix-gold mb-1">Detected:</div>
+                                        <div class="text-white font-mono text-sm">"Hello, I am practicing my pronunciation"</div>
+                                        <div class="flex items-center gap-2 mt-2">
+                                            <div class="h-1 flex-1 bg-gray-800 rounded-full overflow-hidden">
+                                                <div class="h-full w-[98%] bg-gradient-to-r from-phonix-copper to-phonix-gold rounded-full"></div>
+                                            </div>
+                                            <span class="text-xs text-phonix-gold">98%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Haptic Feedback Feature -->
+            <div class="grid lg:grid-cols-2 gap-16 items-center mb-32">
+                <div class="order-2 lg:order-1 relative interactive-element">
+                    <div class="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-3xl blur-3xl animate-glow" style="animation-delay: 0.5s"></div>
+                    <div class="relative glass-panel rounded-3xl p-8 border border-white/10 edge-glow">
+                        <div class="grid grid-cols-3 gap-4">
+                            <!-- Vowel Pattern -->
+                            <div class="bg-black/40 rounded-xl p-4 border border-white/5 hover:border-phonix-copper/50 transition-colors group edge-glow interactive-element">
+                                <div class="text-phonix-gold text-2xl font-bold mb-2">/æ/</div>
+                                <div class="text-xs text-gray-500 mb-3">Cat vowel</div>
+                                <div class="flex items-end gap-1 h-12">
+                                    <div class="flex-1 bg-phonix-copper/40 rounded-t phoneme-bar" style="height: 80%"></div>
+                                    <div class="flex-1 bg-phonix-copper/60 rounded-t phoneme-bar" style="height: 40%; animation-delay: 0.1s"></div>
+                                    <div class="flex-1 bg-phonix-copper/40 rounded-t phoneme-bar" style="height: 80%; animation-delay: 0.2s"></div>
+                                </div>
+                                <div class="mt-2 text-[10px] text-gray-600 font-mono">[100,50,100]</div>
+                            </div>
+                            
+                            <!-- Consonant Pattern -->
+                            <div class="bg-black/40 rounded-xl p-4 border border-white/5 hover:border-phonix-copper/50 transition-colors group edge-glow interactive-element">
+                                <div class="text-phonix-gold text-2xl font-bold mb-2">/t/</div>
+                                <div class="text-xs text-gray-500 mb-3">Stop consonant</div>
+                                <div class="flex items-end gap-1 h-12">
+                                    <div class="flex-1 bg-blue-500/60 rounded-t phoneme-bar" style="height: 100%"></div>
+                                    <div class="flex-1 bg-blue-500/30 rounded-t phoneme-bar" style="height: 20%; animation-delay: 0.1s"></div>
+                                </div>
+                                <div class="mt-2 text-[10px] text-gray-600 font-mono">[50,30]</div>
+                            </div>
+                            
+                            <!-- Buzz Pattern -->
+                            <div class="bg-black/40 rounded-xl p-4 border border-white/5 hover:border-phonix-copper/50 transition-colors group edge-glow interactive-element">
+                                <div class="text-phonix-gold text-2xl font-bold mb-2">/z/</div>
+                                <div class="text-xs text-gray-500 mb-3">Buzz fricative</div>
+                                <div class="flex items-end gap-1 h-12">
+                                    <div class="flex-1 bg-purple-500/40 rounded-t phoneme-bar" style="height: 60%"></div>
+                                    <div class="flex-1 bg-purple-500/60 rounded-t phoneme-bar" style="height: 60%; animation-delay: 0.05s"></div>
+                                    <div class="flex-1 bg-purple-500/40 rounded-t phoneme-bar" style="height: 60%; animation-delay: 0.1s"></div>
+                                    <div class="flex-1 bg-purple-500/60 rounded-t phoneme-bar" style="height: 60%; animation-delay: 0.15s"></div>
+                                </div>
+                                <div class="mt-2 text-[10px] text-gray-600 font-mono">[30,30,30,30]</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Laryngeal Haptics Visualization -->
+                        <div class="mt-6 p-4 bg-black/40 rounded-xl border border-white/5 edge-glow">
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="text-xs text-gray-400 uppercase tracking-wider">Laryngeal Haptics</span>
+                                <span class="text-xs text-phonix-gold">Active</span>
+                            </div>
+                            <div class="flex items-center gap-4">
+                                <div class="flex-1 h-16 bg-gray-900 rounded-lg overflow-hidden relative edge-glow">
+                                    <div class="absolute inset-0 flex items-center justify-center">
+                                        <div class="w-full h-px bg-phonix-copper/30"></div>
+                                    </div>
+                                    <!-- Waveform -->
+                                    <svg class="absolute inset-0 w-full h-full" preserveAspectRatio="none">
+                                        <path d="M0,32 Q50,10 100,32 T200,32 T300,32 T400,32" stroke="#D4A574" stroke-width="2" fill="none" class="animate-pulse">
+                                            <animate attributeName="d" 
+                                                values="M0,32 Q50,10 100,32 T200,32 T300,32 T400,32;
+                                                        M0,32 Q50,54 100,32 T200,32 T300,32 T400,32;
+                                                        M0,32 Q50,10 100,32 T200,32 T300,32 T400,32" 
+                                                dur="2s" 
+                                                repeatCount="indefinite"/>
+                                        </path>
+                                    </svg>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-2xl font-bold text-white">120<span class="text-sm text-gray-500">Hz</span></div>
+                                    <div class="text-xs text-gray-500">Pitch detected</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="order-1 lg:order-2 space-y-6">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-xs font-medium uppercase tracking-wider edge-glow">
+                        8D Haptic Engine
+                    </div>
+                    <h2 class="font-display font-bold text-4xl md:text-5xl leading-tight glow-text">
+                        Feel Every <span class="text-phonix-copper">Phoneme</span>
+                    </h2>
+                    <p class="text-gray-400 text-lg leading-relaxed">
+                        Our proprietary haptic engine translates speech into tactile feedback. Vowels buzz long, consonants tap short, and pitch becomes throat vibration. Feel the difference between /æ/ and /ɑ/ through your fingertips.
+                    </p>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="glass-panel rounded-xl p-4 border border-white/5 edge-glow interactive-element">
+                            <div class="text-phonix-gold font-bold text-3xl mb-1">50+</div>
+                            <div class="text-sm text-gray-400">Unique haptic patterns</div>
+                        </div>
+                        <div class="glass-panel rounded-xl p-4 border border-white/5 edge-glow interactive-element">
+                            <div class="text-phonix-gold font-bold text-3xl mb-1">20Hz</div>
+                            <div class="text-sm text-gray-400">Update frequency</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Dashboard Preview -->
+    <section id="dashboard" class="relative py-32 overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-b from-transparent via-phonix-copper/5 to-transparent"></div>
+        <div class="content-layer max-w-7xl mx-auto px-6">
+            <div class="text-center mb-16">
+                <h2 class="font-display font-bold text-4xl md:text-5xl mb-6 glow-text">Teacher <span class="gradient-text">Dashboard</span></h2>
+                <p class="text-gray-400 max-w-2xl mx-auto">Real-time monitoring, lesson control, and AI-powered insights for educators.</p>
+            </div>
+
+            <!-- Dashboard Mockup -->
+            <div class="relative max-w-6xl mx-auto interactive-element">
+                <div class="absolute -inset-4 bg-gradient-to-r from-phonix-copper/20 via-phonix-gold/20 to-phonix-copper/20 rounded-3xl blur-2xl opacity-50 animate-glow"></div>
+                <div class="relative glass-panel rounded-2xl border border-white/10 overflow-hidden shadow-2xl edge-glow">
+                    <!-- Browser Chrome -->
+                    <div class="bg-gray-900 border-b border-white/5 px-4 py-3 flex items-center gap-2">
+                        <div class="flex gap-1.5">
+                            <div class="w-3 h-3 rounded-full bg-red-500/80"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-500/80"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-500/80"></div>
+                        </div>
+                        <div class="flex-1 mx-4">
+                            <div class="bg-black/50 rounded-md px-3 py-1.5 text-xs text-gray-500 text-center font-mono">localhost:3000/dashboard</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Dashboard Content -->
+                    <div class="bg-gray-950 p-6 grid grid-cols-12 gap-4 min-h-[600px]">
+                        <!-- Sidebar -->
+                        <div class="col-span-2 space-y-2">
+                            <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-phonix-copper/20 text-phonix-gold edge-glow interactive-element">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path>
+                                </svg>
+                                <span class="text-xs font-medium">Overview</span>
+                            </div>
+                            <div class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-400 hover:bg-white/5 transition-colors interactive-element">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                                </svg>
+                                <span class="text-xs font-medium">Students</span>
+                            </div>
+                            <div class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-400 hover:bg-white/5 transition-colors interactive-element">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                                </svg>
+                                <span class="text-xs font-medium">Lessons</span>
+                            </div>
+                        </div>
+
+                        <!-- Main Content -->
+                        <div class="col-span-7 space-y-4">
+                            <!-- Video Feed -->
+                            <div class="bg-black rounded-xl overflow-hidden border border-white/10 relative aspect-video edge-glow">
+                                <div class="absolute inset-0 bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
+                                    <div class="text-center">
+                                        <div class="w-16 h-16 rounded-full bg-phonix-copper/20 flex items-center justify-center mx-auto mb-2 animate-pulse edge-glow">
+                                            <svg class="w-8 h-8 text-phonix-copper" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                            </svg>
+                                        </div>
+                                        <span class="text-sm text-gray-500">Live Feed Active</span>
+                                    </div>
+                                </div>
+                                <!-- Overlays -->
+                                <div class="absolute top-4 left-4 px-2 py-1 bg-green-500/20 border border-green-500/30 rounded text-[10px] text-green-400 font-mono edge-glow">LIVE</div>
+                                <div class="absolute bottom-4 right-4 px-2 py-1 bg-black/60 backdrop-blur rounded border border-white/10 text-[10px] text-gray-400 edge-glow">Latency: 24ms</div>
+                            </div>
+
+                            <!-- Timeline -->
+                            <div class="bg-black/40 rounded-xl p-4 border border-white/5 edge-glow">
+                                <div class="flex items-center justify-between mb-3">
+                                    <span class="text-xs text-gray-400 uppercase tracking-wider">Phoneme Timeline</span>
+                                    <div class="flex gap-2">
+                                        <button class="p-1.5 rounded bg-phonix-copper/20 text-phonix-gold hover:bg-phonix-copper/30 transition-colors interactive-element edge-glow">
+                                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path>
+                                            </svg>
+                                        </button>
+                                        <button class="p-1.5 rounded bg-white/5 text-gray-400 hover:bg-white/10 transition-colors interactive-element">
+                                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="h-12 flex items-end gap-1">
+                                    <div class="flex-1 bg-phonix-copper/30 rounded-t phoneme-bar" style="height: 40%"></div>
+                                    <div class="flex-1 bg-phonix-copper/50 rounded-t phoneme-bar" style="height: 60%; animation-delay: 0.1s"></div>
+                                    <div class="flex-1 bg-phonix-copper/70 rounded-t phoneme-bar" style="height: 80%; animation-delay: 0.2s"></div>
+                                    <div class="flex-1 bg-phonix-copper rounded-t phoneme-bar" style="height: 100%; animation-delay: 0.3s"></div>
+                                    <div class="flex-1 bg-blue-500/50 rounded-t phoneme-bar" style="height: 50%; animation-delay: 0.4s"></div>
+                                    <div class="flex-1 bg-blue-500/70 rounded-t phoneme-bar" style="height: 70%; animation-delay: 0.5s"></div>
+                                    <div class="flex-1 bg-purple-500/50 rounded-t phoneme-bar" style="height: 60%; animation-delay: 0.6s"></div>
+                                    <div class="flex-1 bg-phonix-copper/40 rounded-t phoneme-bar" style="height: 40%; animation-delay: 0.7s"></div>
+                                </div>
+                                <div class="flex justify-between mt-2 text-[10px] text-gray-600 font-mono">
+                                    <span>0:00</span>
+                                    <span>0:02</span>
+                                    <span>0:04</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right Panel -->
+                        <div class="col-span-3 space-y-4">
+                            <!-- Lip Reading Results -->
+                            <div class="bg-black/40 rounded-xl p-4 border border-white/5 edge-glow">
+                                <h4 class="text-xs text-gray-400 uppercase tracking-wider mb-3">Lip Reading AI</h4>
+                                <div class="space-y-2">
+                                    <div class="p-2 rounded bg-white/5 border border-white/5 edge-glow">
+                                        <div class="text-xs text-gray-500 mb-1">Detected:</div>
+                                        <div class="text-sm text-white">"Practice"</div>
+                                        <div class="flex items-center gap-1 mt-1">
+                                            <div class="flex-1 h-1 bg-gray-800 rounded-full overflow-hidden">
+                                                <div class="h-full w-[95%] bg-green-500 rounded-full"></div>
+                                            </div>
+                                            <span class="text-[10px] text-green-400">95%</span>
+                                        </div>
+                                    </div>
+                                    <div class="p-2 rounded bg-white/5 border border-white/5 opacity-50">
+                                        <div class="text-xs text-gray-500">Previous: "Hello"</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Pitch Analysis -->
+                            <div class="bg-black/40 rounded-xl p-4 border border-white/5 edge-glow">
+                                <h4 class="text-xs text-gray-400 uppercase tracking-wider mb-3">Pitch Analysis</h4>
+                                <div class="h-24 flex items-end gap-1">
+                                    <div class="flex-1 bg-phonix-gold/40 rounded-t phoneme-bar" style="height: 30%"></div>
+                                    <div class="flex-1 bg-phonix-gold/60 rounded-t phoneme-bar" style="height: 50%"></div>
+                                    <div class="flex-1 bg-phonix-gold/80 rounded-t phoneme-bar" style="height: 80%"></div>
+                                    <div class="flex-1 bg-phonix-gold rounded-t phoneme-bar" style="height: 60%"></div>
+                                    <div class="flex-1 bg-phonix-gold/60 rounded-t phoneme-bar" style="height: 40%"></div>
+                                </div>
+                                <div class="mt-2 flex justify-between text-[10px] text-gray-500">
+                                    <span>85Hz</span>
+                                    <span>255Hz</span>
+                                </div>
+                            </div>
+
+                            <!-- Haptic Log -->
+                            <div class="bg-black/40 rounded-xl p-4 border border-white/5 edge-glow">
+                                <h4 class="text-xs text-gray-400 uppercase tracking-wider mb-3">Haptic Events</h4>
+                                <div class="space-y-1 font-mono text-[10px]">
+                                    <div class="flex items-center gap-2 text-phonix-gold">
+                                        <span class="w-1 h-1 rounded-full bg-phonix-gold animate-pulse"></span>
+                                        <span>Vowel /æ/ triggered</span>
+                                    </div>
+                                    <div class="flex items-center gap-2 text-gray-500">
+                                        <span class="w-1 h-1 rounded-full bg-gray-500"></span>
+                                        <span>Consonant /t/ ended</span>
+                                    </div>
+                                    div class="flex items-center gap-2 text-gray-500">
+                                        <span class="w-1 h-1 rounded-full bg-gray-500"></span>
+                                        <span>Pattern: [100,50,100]</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="relative py-32 overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-t from-phonix-copper/10 to-transparent"></div>
+        <div class="content-layer max-w-4xl mx-auto px-6 text-center">
+            <h2 class="font-display font-bold text-5xl md:text-6xl mb-8 leading-tight glow-text">
+                Ready to <span class="gradient-text">Feel</span> the<br>Future of Speech?
+            </h2>
+            <p class="text-xl text-gray-400 mb-12 max-w-2xl mx-auto">
+                Join the revolution in pronunciation learning. Experience the power of AI lip-reading and haptic feedback technology.
+            </p>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <button class="px-8 py-4 bg-gradient-to-r from-phonix-copper to-phonix-gold text-white font-semibold rounded-full hover:shadow-2xl hover:shadow-phonix-copper/30 transition-all transform hover:scale-105 interactive-element edge-glow">
+                    Start Free Trial
+                </button>
+                <button class="px-8 py-4 glass-panel text-white font-semibold rounded-full hover:bg-white/5 transition-all border border-white/10 interactive-element edge-glow">
+                    View Documentation
+                </button>
+            </div>
+            
+            <!-- Tech Stack -->
+            <div class="mt-16 pt-8 border-t border-white/10">
+                <p class="text-xs text-gray-500 uppercase tracking-widest mb-6">Powered By</p>
+                <div class="flex flex-wrap justify-center gap-8 opacity-50">
+                    <div class="flex items-center gap-2 text-gray-400 interactive-element hover:opacity-100 transition-opacity">
+                        <svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 2c5.514 0 10 4.486 10 10s-4.486 10-10 10S2 17.514 2 12 6.486 2 12 2zm-1 5v4H7v2h4v4h2v-4h4v-2h-4V7h-2z"/>
+                        </svg>
+                        <span class="text-sm font-medium">React 19</span>
+                    </div>
+                    <div class="flex items-center gap-2 text-gray-400 interactive-element hover:opacity-100 transition-opacity">
+                        <svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+                        </svg>
+                        <span class="text-sm font-medium">FastAPI</span>
+                    </div>
+                    <div class="flex items-center gap-2 text-gray-400 interactive-element hover:opacity-100 transition-opacity">
+                        <svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                        </svg>
+                        <span class="text-sm font-medium">WebSockets</span>
+                    </div>
+                    <div class="flex items-center gap-2 text-gray-400 interactive-element hover:opacity-100 transition-opacity">
+                        <svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                        </svg>
+                        <span class="text-sm font-medium">Gemini AI</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="relative border-t border-white/5 bg-black/50 backdrop-blur-xl">
+        <div class="max-w-7xl mx-auto px-6 py-12">
+            <div class="grid md:grid-cols-4 gap-8 mb-8">
+                <div class="col-span-2">
+                    <div class="flex items-center gap-3 mb-4 interactive-element">
+                        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-phonix-copper to-phonix-gold flex items-center justify-center edge-glow">
+                            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path>
+                            </svg>
+                        </div>
+                        <span class="font-display font-bold text-lg">HapticPhonix</span>
+                    </div>
+                    <p class="text-gray-500 text-sm max-w-sm">
+                        Revolutionary speech learning technology combining AI lip-reading, real-time phoneme analysis, and 8D haptic feedback.
+                    </p>
+                </div>
+                <div>
+                    <h4 class="font-semibold text-white mb-4">Product</h4>
+                    <ul class="space-y-2 text-sm text-gray-500">
+                        <li><a href="#" class="hover:text-phonix-gold transition-colors interactive-element">Features</a></li>
+                        <li><a href="#" class="hover:text-phonix-gold transition-colors interactive-element">Lessons</a></li>
+                        <li><a href="#" class="hover:text-phonix-gold transition-colors interactive-element">Dashboard</a></li>
+                        <li><a href="#" class="hover:text-phonix-gold transition-colors interactive-element">API</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-semibold text-white mb-4">Resources</h4>
+                    <ul class="space-y-2 text-sm text-gray-500">
+                        <li><a href="#" class="hover:text-phonix-gold transition-colors interactive-element">Documentation</a></li>
+                        <li><a href="#" class="hover:text-phonix-gold transition-colors interactive-element">GitHub</a></li>
+                        <li><a href="#" class="hover:text-phonix-gold transition-colors interactive-element">Research</a></li>
+                        <li><a href="#" class="hover:text-phonix-gold transition-colors interactive-element">Support</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
+                <p class="text-xs text-gray-600">© 2026 HapticPhonix (CHD). All rights reserved.</p>
+                <div class="flex gap-6">
+                    <a href="#" class="text-gray-600 hover:text-phonix-gold transition-colors interactive-element">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                    </a>
+                    <a href="#" class="text-gray-600 hover:text-phonix-gold transition-colors interactive-element">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"/></svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Custom Cursor
+        const cursorDot = document.querySelector('.cursor-dot');
+        const cursorOutline = document.querySelector('.cursor-outline');
+        const interactiveElements = document.querySelectorAll('.interactive-element, a, button');
+
+        window.addEventListener('mousemove', (e) => {
+            const posX = e.clientX;
+            const posY = e.clientY;
+
+            cursorDot.style.left = `${posX}px`;
+            cursorDot.style.top = `${posY}px`;
+
+            cursorOutline.animate({
+                left: `${posX}px`,
+                top: `${posY}px`
+            }, { duration: 500, fill: "forwards" });
+        });
+
+        interactiveElements.forEach(el => {
+            el.addEventListener('mouseenter', () => {
+                cursorOutline.classList.add('hover');
+            });
+            el.addEventListener('mouseleave', () => {
+                cursorOutline.classList.remove('hover');
+            });
+            el.addEventListener('mousedown', () => {
+                cursorOutline.classList.add('click');
+            });
+            el.addEventListener('mouseup', () => {
+                cursorOutline.classList.remove('click');
+            });
+        });
+
+        // Three.js Dispersed Wave Particle System
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        // Configuration for dispersed waves
+        const waveCount = 5;
+        const particlesPerWave = 400;
+        const totalParticles = waveCount * particlesPerWave;
+        
+        const positions = new Float32Array(totalParticles * 3);
+        const colors = new Float32Array(totalParticles * 3);
+        const originalPositions = new Float32Array(totalParticles * 3);
+        const waveIndices = new Float32Array(totalParticles);
+        const phaseOffsets = new Float32Array(totalParticles);
+        
+        // Color palette
+        const colorPalette = [
+            new THREE.Color(0xB87333), // Copper
+            new THREE.Color(0xD4A574), // Gold
+            new THREE.Color(0xF5F1E8), // Cream
+            new THREE.Color(0xE67E22), // Orange
+            new THREE.Color(0xFFFFFF)  // White
+        ];
+
+        // Create dispersed wave layers
+        for (let w = 0; w < waveCount; w++) {
+            const waveZ = (w - waveCount / 2) * 8;
+            const yOffset = (w - waveCount / 2) * 2;
+            
+            for (let i = 0; i < particlesPerWave; i++) {
+                const idx = w * particlesPerWave + i;
+                const x = (i / particlesPerWave - 0.5) * 60; // Wide spread
+                const z = waveZ + (Math.random() - 0.5) * 3;
+                const y = yOffset + (Math.random() - 0.5) * 2;
+
+                positions[idx * 3] = x;
+                positions[idx * 3 + 1] = y;
+                positions[idx * 3 + 2] = z;
+
+                originalPositions[idx * 3] = x;
+                originalPositions[idx * 3 + 1] = y;
+                originalPositions[idx * 3 + 2] = z;
+
+                waveIndices[idx] = w;
+                phaseOffsets[idx] = (i / particlesPerWave) * Math.PI * 4 + w * Math.PI / 2;
+
+                const color = colorPalette[w % colorPalette.length];
+                colors[idx * 3] = color.r;
+                colors[idx * 3 + 1] = color.g;
+                colors[idx * 3 + 2] = color.b;
+            }
+        }
+
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+        const material = new THREE.PointsMaterial({
+            size: 0.25,
+            vertexColors: true,
+            transparent: true,
+            opacity: 0.9,
+            sizeAttenuation: true,
+            blending: THREE.AdditiveBlending
+        });
+
+        const particles = new THREE.Points(geometry, material);
+        scene.add(particles);
+
+        // Create flowing wave lines
+        const lineCount = 150;
+        const lineGeometry = new THREE.BufferGeometry();
+        const linePositions = new Float32Array(lineCount * 6);
+        lineGeometry.setAttribute('position', new THREE.BufferAttribute(linePositions, 3));
+        
+        const lineMaterial = new THREE.LineBasicMaterial({
+            color: 0xD4A574,
+            transparent: true,
+            opacity: 0.2,
+            blending: THREE.AdditiveBlending
+        });
+        
+        const lines = new THREE.LineSegments(lineGeometry, lineMaterial);
+        scene.add(lines);
+
+        camera.position.z = 25;
+        camera.position.y = 5;
+
+        // Mouse interaction variables
+        let mouseX = 0;
+        let mouseY = 0;
+        let targetX = 0;
+        let targetY = 0;
+        let scrollProgress = 0;
+
+        document.addEventListener('mousemove', (event) => {
+            mouseX = (event.clientX / window.innerWidth) * 2 - 1;
+            mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
+        });
+
+        // Scroll tracking
+        window.addEventListener('scroll', () => {
+            const scrollTop = window.scrollY;
+            const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+            scrollProgress = scrollTop / docHeight;
+        });
+
+        // Animation variables
+        let time = 0;
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+            time += delta;
+
+            const positions = particles.geometry.attributes.position.array;
+            const linePositions = lines.geometry.attributes.position.array;
+
+            // Update dispersed wave particles with mouse influence
+            for (let i = 0; i < totalParticles; i++) {
+                const w = waveIndices[i];
+                const x = originalPositions[i * 3];
+                const baseY = originalPositions[i * 3 + 1];
+                const baseZ = originalPositions[i * 3 + 2];
+                
+                // Wave calculations
+                const waveSpeed = 1.5 + w * 0.3;
+                const waveFreq = 0.3 + w * 0.1;
+                const amplitude = 1.5 + w * 0.5;
+                
+                // Multi-layered wave motion
+                const wave1 = Math.sin(x * waveFreq + time * waveSpeed + phaseOffsets[i]) * amplitude;
+                const wave2 = Math.cos(x * waveFreq * 0.5 + time * waveSpeed * 0.7 + w) * amplitude * 0.5;
+                
+                // Mouse influence - waves follow cursor
+                const mouseInfluenceX = mouseX * 5 * (1 + w * 0.2);
+                const mouseInfluenceY = mouseY * 3 * (1 + w * 0.2);
+                
+                // Scroll evolution - waves become more dispersed and change behavior
+                const scrollDispersion = scrollProgress * 10;
+                const scrollAmplitude = 1 + scrollProgress * 2;
+                const scrollSpeed = 1 + scrollProgress * 0.5;
+                
+                positions[i * 3] = x + mouseInfluenceX + Math.sin(time + w) * scrollDispersion;
+                positions[i * 3 + 1] = baseY + (wave1 + wave2) * scrollAmplitude + mouseInfluenceY;
+                positions[i * 3 + 2] = baseZ + Math.cos(time * 0.5 + w) * 2 * scrollAmplitude;
+
+                // Color evolution based on scroll
+                const colorShift = (w + scrollProgress * 5) % colorPalette.length;
+                const color1 = colorPalette[Math.floor(colorShift)];
+                const color2 = colorPalette[(Math.floor(colorShift) + 1) % colorPalette.length];
+                const mixFactor = colorShift % 1;
+                
+                colors[i * 3] = color1.r * (1 - mixFactor) + color2.r * mixFactor;
+                colors[i * 3 + 1] = color1.g * (1 - mixFactor) + color2.g * mixFactor;
+                colors[i * 3 + 2] = color1.b * (1 - mixFactor) + color2.b * mixFactor;
+            }
+
+            particles.geometry.attributes.position.needsUpdate = true;
+            particles.geometry.attributes.color.needsUpdate = true;
+
+            // Update connecting lines for flowing effect
+            let lineIdx = 0;
+            for (let w = 0; w < waveCount; w++) {
+                const particlesInWave = Math.min(30, particlesPerWave / 10);
+                for (let i = 0; i < particlesInWave - 1; i++) {
+                    if (lineIdx >= lineCount * 6) break;
+                    
+                    const pIdx = w * particlesPerWave + i * 10;
+                    const nextIdx = w * particlesPerWave + (i + 1) * 10;
+                    
+                    // Connect particles within same wave
+                    linePositions[lineIdx++] = positions[pIdx * 3];
+                    linePositions[lineIdx++] = positions[pIdx * 3 + 1];
+                    linePositions[lineIdx++] = positions[pIdx * 3 + 2];
+                    linePositions[lineIdx++] = positions[nextIdx * 3];
+                    linePositions[lineIdx++] = positions[nextIdx * 3 + 1];
+                    linePositions[lineIdx++] = positions[nextIdx * 3 + 2];
+                }
+            }
+
+            lines.geometry.attributes.position.needsUpdate = true;
+
+            // Smooth camera follow mouse with scroll influence
+            targetX = mouseX * 8;
+            targetY = mouseY * 4 + scrollProgress * 5;
+            
+            camera.position.x += (targetX - camera.position.x) * 0.03;
+            camera.position.y += (5 + targetY - camera.position.y) * 0.03;
+            
+            // Camera rotates slightly based on scroll
+            camera.rotation.z = scrollProgress * 0.1;
+            camera.lookAt(0, scrollProgress * 3, 0);
+
+            // Rotate entire system slowly
+            particles.rotation.y = Math.sin(time * 0.1) * 0.1 + scrollProgress * 0.5;
+            lines.rotation.y = particles.rotation.y;
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // Handle resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // GSAP Animations
+        gsap.registerPlugin(ScrollTrigger);
+
+        // Navbar show on scroll
+        ScrollTrigger.create({
+            start: 'top -100',
+            end: 99999,
+            toggleClass: { className: 'opacity-100 translate-y-0', targets: '#navbar' }
+        });
+
+        // Hero content animation
+        gsap.from('.hero-content > *', {
+            y: 60,
+            opacity: 0,
+            duration: 1,
+            stagger: 0.2,
+            ease: 'power3.out'
+        });
+
+        // Hero visual parallax
+        gsap.to('.hero-visual', {
+            yPercent: 20,
+            ease: 'none',
+            scrollTrigger: {
+                trigger: '.hero-visual',
+                start: 'top bottom',
+                end: 'bottom top',
+                scrub: true
+            }
+        });
+
+        // Feature cards stagger with scroll trigger
+        gsap.utils.toArray('.feature-card').forEach((card, i) => {
+            gsap.from(card, {
+                scrollTrigger: {
+                    trigger: card,
+                    start: 'top 85%',
+                    toggleActions: 'play none none reverse'
+                },
+                y: 50,
+                opacity: 0,
+                duration: 0.8,
+                delay: i * 0.1,
+                ease: 'power3.out'
+            });
+        });
+
+        // Phoneme bars animation
+        gsap.utils.toArray('.phoneme-bar').forEach((bar, i) => {
+            gsap.to(bar, {
+                scaleY: 1.5,
+                duration: 0.5,
+                repeat: -1,
+                yoyo: true,
+                ease: 'sine.inOut',
+                delay: i * 0.1
+            });
+        });
+
+        // Smooth scroll for nav links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        });
+
+        // Interactive haptic simulation on hover
+        document.querySelectorAll('.feature-card').forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                if (navigator.vibrate) {
+                    navigator.vibrate([50, 30, 50]);
+                }
+                // Create ripple effect
+                const ripple = document.createElement('div');
+                ripple.className = 'haptic-ripple';
+                ripple.style.left = '50%';
+                ripple.style.top = '50%';
+                ripple.style.transform = 'translate(-50%, -50%)';
+                card.appendChild(ripple);
+                setTimeout(() => ripple.remove(), 2000);
+            });
+        });
+
+        // Add floating animation to specific elements
+        gsap.utils.toArray('.animate-float').forEach(el => {
+            gsap.to(el, {
+                y: -20,
+                duration: 3,
+                repeat: -1,
+                yoyo: true,
+                ease: 'sine.inOut'
+            });
+        });
+
+        // Glow effect on scroll
+        gsap.utils.toArray('.edge-glow').forEach(el => {
+            el.addEventListener('mouseenter', () => {
+                gsap.to(el, {
+                    boxShadow: '0 0 30px rgba(212, 165, 116, 0.3), 0 0 60px rgba(184, 115, 51, 0.2)',
+                    duration: 0.3
+                });
+            });
+            el.addEventListener('mouseleave', () => {
+                gsap.to(el, {
+                    boxShadow: 'none',
+                    duration: 0.3
+                });
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,91 @@
+﻿python : 2026-02-14 20:05:24.399176: I 
+tensorflow/core/util/port.cc:153] oneDNN 
+custom operations are on. You may see 
+slightly different numerical results due to 
+floating-point round-off errors from 
+different computation orders. To turn them 
+off, set the environment variable 
+`TF_ENABLE_ONEDNN_OPTS=0`.
+At line:1 char:32
++ $env:PYTHONIOENCODING='utf-8'; python 
+.\main.py 2>&1 | Out-File -Enco ...
++                                
+~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified:  
+   (2026-02-14 20:0...ONEDNN_OPTS=0`.:Strin  
+  g) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandE 
+   rror
+ 
+2026-02-14 20:05:26.650253: I 
+tensorflow/core/util/port.cc:153] oneDNN 
+custom operations are on. You may see 
+slightly different numerical results due to 
+floating-point round-off errors from 
+different computation orders. To turn them 
+off, set the environment variable 
+`TF_ENABLE_ONEDNN_OPTS=0`.
+W0000 00:00:1771117528.271974    8628 
+face_landmarker_graph.cc:180] Sets 
+FaceBlendshapesGraph acceleration to xnnpack 
+by default.
+INFO: Created TensorFlow Lite XNNPACK 
+delegate for CPU.
+W0000 00:00:1771117528.279021    2148 
+inference_feedback_manager.cc:121] Feedback 
+manager requires a model with a single 
+signature inference. Disabling support for 
+feedback tensors.
+W0000 00:00:1771117528.290648    9896 
+inference_feedback_manager.cc:121] Feedback 
+manager requires a model with a single 
+signature inference. Disabling support for 
+feedback tensors.
+C:\CHD\CHD\backend\main.py:328: 
+DeprecationWarning: 
+        on_event is deprecated, use lifespan 
+event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](ht
+tps://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("startup")
+INFO:     Started server process [31372]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+ERROR:    [Errno 10048] error while 
+attempting to bind on address ('0.0.0.0', 
+8000): [winerror 10048] only one usage of 
+each socket address (protocol/network 
+address/port) is normally permitted
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+MediaPipe: initialized with options using C:\CHD\CHD\backend\face_landmarker.task
+[*] Starting HapticPhonix server on 0.0.0.0:8000
+[VIDEO]  ws://localhost:8000/ws/video
+[VIEWER] ws://localhost:8000/ws/viewer
+[HAPTIC] ws://localhost:8000/ws/speech-haptic
+[LEARN]  http://localhost:8000/lessons
+Loaded 13 phonemes from C:\CHD\CHD\backend\lessons\sample_lesson.json
+Default lesson loaded
+Exception ignored in: <function 
+FaceLandmarker.__del__ at 0x000001F9961C2AC0>
+Traceback (most recent call last):
+  File "C:\Users\rahbi\AppData\Local\Programs
+\Python\Python313\Lib\site-packages\mediapipe
+\tasks\python\vision\face_landmarker.py", 
+line 3353, in __del__
+  File "C:\Users\rahbi\AppData\Local\Programs
+\Python\Python313\Lib\site-packages\mediapipe
+\tasks\python\vision\face_landmarker.py", 
+line 3328, in close
+  File "C:\Users\rahbi\AppData\Local\Programs
+\Python\Python313\Lib\site-packages\mediapipe
+\tasks\python\core\serial_dispatcher.py", 
+line 74, in shutdown_aware_handler
+  File "C:\Users\rahbi\AppData\Local\Programs
+\Python\Python313\Lib\site-packages\mediapipe
+\tasks\python\core\mediapipe_c_utils.py", 
+line 126, in dispatcher_wrapper
+TypeError: 'NoneType' object is not callable

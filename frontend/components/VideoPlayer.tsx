@@ -1,20 +1,107 @@
 
-import React from 'react';
+import React, { useRef, useEffect, useState, useCallback } from "react";
+import LipMeshOverlay from './LipMeshOverlay';
+
+interface LipLandmark {
+  x: number;
+  y: number;
+  z: number;
+  index: number;
+}
+
+interface LipBoundingBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
 
 interface VideoPlayerProps {
   frameSrc: string | null;
   status: string;
+  landmarks?: LipLandmark[];
+  showOverlay?: boolean;
+  mouthOpenness?: number;
+  currentPhoneme?: string | null;
+  lipBoundingBox?: LipBoundingBox | null;
+  mouthState?: string;
+  lipReadingText?: string | null;
 }
 
-const VideoPlayer: React.FC<VideoPlayerProps> = ({ frameSrc, status }) => {
+const MOUTH_STATE_LABEL: Record<string, string> = {
+  closed: "Closed",
+  open: "Open",
+  talking: "Talking",
+};
+
+const VideoPlayer: React.FC<VideoPlayerProps> = ({ 
+  frameSrc, 
+  status, 
+  landmarks = [], 
+  showOverlay = true,
+  mouthOpenness,
+  currentPhoneme,
+  lipBoundingBox = null,
+  mouthState = "unknown",
+  lipReadingText = null,
+}) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [dimensions, setDimensions] = useState({ width: 640, height: 480 });
+  const [imageNatural, setImageNatural] = useState<{ width: number; height: number } | null>(null);
+
+  // Track container dimensions for overlay sizing
+  useEffect(() => {
+    const updateDimensions = () => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        setDimensions({ width: rect.width, height: rect.height });
+      }
+    };
+    updateDimensions();
+    const observer = new ResizeObserver(updateDimensions);
+    if (containerRef.current) observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  const onImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget;
+    if (img.naturalWidth && img.naturalHeight) {
+      setImageNatural({ width: img.naturalWidth, height: img.naturalHeight });
+    } else {
+      setImageNatural(null);
+    }
+  }, []);
+
+  const onImageErrorOrNewSrc = useCallback(() => {
+    setImageNatural(null);
+  }, []);
+
   return (
-    <div className="relative aspect-video bg-gray-900 rounded-lg overflow-hidden border border-gray-800 flex items-center justify-center">
+    <div 
+      ref={containerRef}
+      className="relative aspect-video bg-black/40 rounded-lg overflow-hidden border border-white/10 flex items-center justify-center"
+    >
       {frameSrc ? (
-        <img 
-          src={frameSrc} 
-          alt="Live Stream" 
-          className="w-full h-full object-contain"
-        />
+        <>
+          <img
+            src={frameSrc}
+            alt="Live Stream"
+            className="w-full h-full object-contain"
+            onLoad={onImageLoad}
+            onError={onImageErrorOrNewSrc}
+          />
+          {showOverlay && (
+            <LipMeshOverlay
+              landmarks={landmarks}
+              width={dimensions.width}
+              height={dimensions.height}
+              isVisible={true}
+              lipBoundingBox={lipBoundingBox}
+              imageNaturalWidth={imageNatural?.width}
+              imageNaturalHeight={imageNatural?.height}
+            />
+          )}
+        </>
       ) : (
         <div className="flex flex-col items-center gap-2 text-gray-500">
           <div className="animate-pulse">
@@ -27,10 +114,53 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ frameSrc, status }) => {
         </div>
       )}
       
-      {/* Overlay info */}
-      <div className="absolute top-2 right-2 bg-black/50 px-2 py-1 rounded text-xs text-white backdrop-blur-sm">
-        Live Feed
+      {/* Top-right status badges */}
+      <div className="absolute top-2 right-2 flex items-center gap-2">
+        <div className="bg-black/60 px-2 py-1 rounded text-xs text-[#D4A574] backdrop-blur-sm border border-[#B87333]/20">
+          Live Feed
+        </div>
+        {landmarks.length > 0 && (
+          <div className="bg-[#B87333]/70 px-2 py-1 rounded text-xs text-white backdrop-blur-sm animate-pulse">
+            Tracking
+          </div>
+        )}
+        {mouthState !== "unknown" && (
+          <div className="bg-black/50 px-2 py-1 rounded text-xs text-white backdrop-blur-sm">
+            <span className="capitalize">{MOUTH_STATE_LABEL[mouthState] || mouthState}</span>
+          </div>
+        )}
       </div>
+
+      {/* Lip reading text overlay at top-center */}
+      {lipReadingText && (
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-[#B87333]/80 px-4 py-2 rounded-lg text-sm text-white font-medium backdrop-blur-sm max-w-[80%] text-center shadow-lg shadow-[#B87333]/30 animate-in fade-in">
+          &ldquo;{lipReadingText}&rdquo;
+        </div>
+      )}
+
+      {/* Bottom-right HUD: mouth openness + phoneme */}
+      {(mouthOpenness !== undefined || currentPhoneme) && (
+        <div className="absolute bottom-2 right-2 bg-black/60 px-3 py-2 rounded-lg text-xs text-white backdrop-blur-sm space-y-1">
+          {mouthOpenness !== undefined && (
+            <div className="flex items-center gap-2">
+              <span className="text-gray-400">Mouth:</span>
+              <div className="w-16 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-[#D4A574] rounded-full transition-all duration-100" 
+                  style={{ width: `${Math.min(mouthOpenness * 100, 100)}%` }}
+                />
+              </div>
+              <span className="font-mono w-8 text-right">{(mouthOpenness * 100).toFixed(0)}%</span>
+            </div>
+          )}
+          {currentPhoneme && (
+            <div className="flex items-center gap-2">
+              <span className="text-gray-400">Sound:</span>
+              <span className="font-bold text-yellow-300 text-sm">{currentPhoneme}</span>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

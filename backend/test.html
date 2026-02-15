@@ -1,0 +1,1534 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HapticPhonix | Feel the Sound. Master Speech.</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Space Grotesk', 'sans-serif'],
+                    },
+                    colors: {
+                        'phonix': {
+                            black: '#0a0a0a',
+                            dark: '#111111',
+                            gray: '#1a1a1a',
+                            copper: '#B87333',
+                            gold: '#D4A574',
+                            cream: '#F5F1E8',
+                            orange: '#E67E22',
+                            white: '#F5F5F5',
+                            glow: '#FFD700',
+                            blue: '#3B82F6',
+                            purple: '#8B5CF6',
+                            green: '#10B981'
+                        }
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'float': 'float 6s ease-in-out infinite',
+                        'vibrate': 'vibrate 0.3s ease-in-out infinite',
+                        'glow': 'glow 2s ease-in-out infinite alternate',
+                        'wave': 'wave 3s ease-in-out infinite',
+                        'marquee': 'marquee 20s linear infinite',
+                        'marquee-reverse': 'marquee-reverse 20s linear infinite',
+                        'flow': 'flow 2s linear infinite',
+                        'pulse-dot': 'pulseDot 1.5s ease-in-out infinite',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-20px)' },
+                        },
+                        vibrate: {
+                            '0%, 100%': { transform: 'translateX(0)' },
+                            '25%': { transform: 'translateX(-2px)' },
+                            '75%': { transform: 'translateX(2px)' },
+                        },
+                        glow: {
+                            '0%': { boxShadow: '0 0 5px rgba(184, 115, 51, 0.5), 0 0 10px rgba(184, 115, 51, 0.3)' },
+                            '100%': { boxShadow: '0 0 20px rgba(212, 165, 116, 0.8), 0 0 40px rgba(212, 165, 116, 0.4)' }
+                        },
+                        wave: {
+                            '0%, 100%': { transform: 'translateY(0) scaleY(1)' },
+                            '50%': { transform: 'translateY(-10px) scaleY(1.1)' },
+                        },
+                        marquee: {
+                            '0%': { transform: 'translateX(0%)' },
+                            '100%': { transform: 'translateX(-50%)' },
+                        },
+                        'marquee-reverse': {
+                            '0%': { transform: 'translateX(-50%)' },
+                            '100%': { transform: 'translateX(0%)' },
+                        },
+                        flow: {
+                            '0%': { strokeDashoffset: '20' },
+                            '100%': { strokeDashoffset: '0' },
+                        },
+                        pulseDot: {
+                            '0%, 100%': { opacity: '1', transform: 'scale(1)' },
+                            '50%': { opacity: '0.5', transform: 'scale(1.2)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        body {
+            background-color: #0a0a0a;
+            color: #F5F5F5;
+            overflow-x: hidden;
+        }
+        
+        /* Grain Overlay */
+        .grain-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 9998;
+            opacity: 0.03;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, #F5F1E8 0%, #D4A574 50%, #B87333 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .glow-text {
+            text-shadow: 0 0 20px rgba(212, 165, 116, 0.5), 0 0 40px rgba(184, 115, 51, 0.3);
+        }
+        
+        .metallic-text {
+            background: linear-gradient(135deg, #F5F1E8 0%, #D4A574 30%, #B87333 50%, #D4A574 70%, #F5F1E8 100%);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: shimmer 3s linear infinite;
+            text-shadow: 0 0 30px rgba(184, 115, 51, 0.5);
+        }
+        
+        @keyframes shimmer {
+            to { background-position: 200% center; }
+        }
+        
+        .glass-panel {
+            background: rgba(26, 26, 26, 0.6);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(212, 165, 116, 0.15);
+            transition: all 0.3s ease;
+        }
+        
+        .glass-panel:hover {
+            border-color: rgba(212, 165, 116, 0.4);
+            box-shadow: 0 0 30px rgba(184, 115, 51, 0.2), inset 0 0 20px rgba(212, 165, 116, 0.05);
+        }
+        
+        .feature-card {
+            position: relative;
+            background: rgba(26, 26, 26, 0.8);
+            border: 1px solid rgba(212, 165, 116, 0.1);
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            overflow: hidden;
+        }
+        
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            inset: -1px;
+            background: linear-gradient(135deg, transparent, rgba(212, 165, 116, 0.3), transparent);
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            z-index: -1;
+            border-radius: inherit;
+        }
+        
+        .feature-card:hover::before {
+            opacity: 1;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            border-color: rgba(212, 165, 116, 0.5);
+            box-shadow: 
+                0 20px 40px rgba(184, 115, 51, 0.15),
+                0 0 60px rgba(212, 165, 116, 0.1),
+                inset 0 0 30px rgba(212, 165, 116, 0.05);
+        }
+        
+        .edge-glow {
+            position: relative;
+        }
+        
+        .edge-glow::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            padding: 1px;
+            background: linear-gradient(135deg, rgba(212, 165, 116, 0.5), transparent, rgba(184, 115, 51, 0.3));
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .edge-glow:hover::after {
+            opacity: 1;
+        }
+        
+        .phoneme-bar {
+            animation: phonemePulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes phonemePulse {
+            0%, 100% { opacity: 0.4; transform: scaleY(0.8); }
+            50% { opacity: 1; transform: scaleY(1.2); }
+        }
+        
+        .scroll-indicator {
+            animation: scrollBounce 2s infinite;
+        }
+        
+        @keyframes scrollBounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(10px); }
+        }
+        
+        .marquee-container {
+            overflow: hidden;
+            white-space: nowrap;
+            position: relative;
+        }
+        
+        .marquee-content {
+            display: inline-block;
+            animation: marquee 30s linear infinite;
+        }
+        
+        .marquee-content-reverse {
+            display: inline-block;
+            animation: marquee-reverse 30s linear infinite;
+        }
+        
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+        
+        #canvas-container canvas {
+            display: block;
+        }
+        
+        .content-layer {
+            position: relative;
+            z-index: 10;
+        }
+        
+        .slideshow-container {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .slideshow-slide {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            transition: opacity 1s ease-in-out, transform 6s ease-out;
+        }
+        
+        .slideshow-slide.active {
+            opacity: 1;
+        }
+        
+        .nav-link {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #D4A574, transparent);
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+        }
+        
+        .nav-link:hover::after {
+            transform: translateX(0);
+        }
+        
+        /* Architecture Diagram Styles */
+        .arch-box {
+            background: rgba(26, 26, 26, 0.9);
+            border: 1px solid rgba(212, 165, 116, 0.3);
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-size: 11px;
+            transition: all 0.3s ease;
+        }
+        
+        .arch-box:hover {
+            border-color: rgba(212, 165, 116, 0.6);
+            box-shadow: 0 0 20px rgba(184, 115, 51, 0.2);
+            transform: translateY(-2px);
+        }
+        
+        .arch-layer {
+            background: rgba(17, 17, 17, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 16px;
+        }
+        
+        .arch-connector {
+            stroke: rgba(212, 165, 116, 0.4);
+            stroke-width: 2;
+            stroke-dasharray: 5,5;
+            animation: flow 1s linear infinite;
+        }
+        
+        .arch-label {
+            font-size: 10px;
+            color: rgba(212, 165, 116, 0.8);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+        
+        *:focus-visible {
+            outline: 2px solid #D4A574;
+            outline-offset: 4px;
+        }
+        
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+        
+        @media (prefers-contrast: high) {
+            .glass-panel {
+                border: 2px solid #D4A574;
+            }
+        }
+    </style>
+<base target="_blank">
+</head>
+<body class="antialiased">
+
+    <!-- Grain Overlay -->
+    <div class="grain-overlay"></div>
+
+    <!-- Three.js Background -->
+    <div id="canvas-container"></div>
+
+    <!-- Navigation -->
+    <nav id="navbar" class="fixed top-0 left-0 w-full z-50 transition-all duration-500 opacity-0 -translate-y-full">
+        <div class="glass-panel border-b border-white/5">
+            <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-3 group cursor-pointer interactive-element">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-phonix-copper to-phonix-gold flex items-center justify-center relative overflow-hidden edge-glow">
+                        <div class="absolute inset-0 bg-white/20 animate-pulse-slow"></div>
+                        <svg class="w-5 h-5 text-white relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path>
+                        </svg>
+                    </div>
+                    <span class="font-display font-bold text-xl tracking-tight text-white group-hover:text-phonix-gold transition-colors">
+                        Haptic<span class="text-phonix-copper">Phonix</span>
+                    </span>
+                </div>
+
+                <div class="hidden md:flex items-center gap-8">
+                    <a href="#features" class="nav-link text-sm font-medium text-gray-400 hover:text-white transition-colors">Features</a>
+                    <a href="#architecture" class="nav-link text-sm font-medium text-gray-400 hover:text-white transition-colors">Architecture</a>
+                    <a href="#lessons" class="nav-link text-sm font-medium text-gray-400 hover:text-white transition-colors">Lessons</a>
+                    <a href="#dashboard" class="nav-link text-sm font-medium text-gray-400 hover:text-white transition-colors">Dashboard</a>
+                    <a href="#demo" class="nav-link text-sm font-medium text-gray-400 hover:text-white transition-colors">Demo</a>
+                </div>
+
+                <div class="flex items-center gap-4">
+                    <button class="hidden md:block text-sm font-medium text-gray-400 hover:text-white transition-colors">Sign In</button>
+                    <button class="px-6 py-2.5 bg-gradient-to-r from-phonix-copper to-phonix-gold text-white font-semibold text-sm rounded-full hover:shadow-lg hover:shadow-phonix-copper/25 transition-all transform hover:scale-105 interactive-element edge-glow">
+                        Get Started
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="relative min-h-screen flex items-center justify-center overflow-hidden">
+        <div class="content-layer max-w-7xl mx-auto px-6 py-20 grid lg:grid-cols-2 gap-12 items-center">
+            
+            <!-- Left Content -->
+            <div class="space-y-8 hero-content">
+                <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-panel border border-phonix-copper/20 edge-glow">
+                    <span class="w-2 h-2 rounded-full bg-phonix-copper animate-pulse"></span>
+                    <span class="text-xs font-medium text-phonix-gold uppercase tracking-widest">AI-Powered Speech Learning</span>
+                </div>
+
+                <h1 class="font-display font-bold text-5xl md:text-7xl leading-tight glow-text">
+                    Feel the <span class="gradient-text">Sound</span>.<br>
+                    Master <span class="text-phonix-copper">Speech</span>.
+                </h1>
+
+                <p class="text-lg text-gray-400 max-w-xl leading-relaxed">
+                    HapticPhonix uses computer vision, AI lip-reading, and haptic feedback to create a revolutionary pronunciation learning experience. For deaf/hard-of-hearing learners and anyone seeking perfect speech.
+                </p>
+
+                <div class="flex flex-wrap gap-4">
+                    <button class="group px-8 py-4 bg-gradient-to-r from-phonix-copper to-phonix-gold text-white font-semibold rounded-full hover:shadow-2xl hover:shadow-phonix-copper/30 transition-all transform hover:scale-105 flex items-center gap-2 interactive-element edge-glow">
+                        <span>Start Learning</span>
+                        <svg class="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
+                        </svg>
+                    </button>
+                    <button class="px-8 py-4 glass-panel text-white font-semibold rounded-full hover:bg-white/5 transition-all flex items-center gap-2 border border-white/10 interactive-element edge-glow">
+                        <svg class="w-5 h-5 text-phonix-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span>Watch Demo</span>
+                    </button>
+                </div>
+
+                <!-- Stats -->
+                <div class="grid grid-cols-3 gap-8 pt-8 border-t border-white/10">
+                    <div class="group interactive-element">
+                        <div class="text-3xl font-display font-bold text-white group-hover:text-phonix-gold transition-colors">98%</div>
+                        <div class="text-sm text-gray-500">Accuracy</div>
+                    </div>
+                    <div class="group interactive-element">
+                        <div class="text-3xl font-display font-bold text-white group-hover:text-phonix-gold transition-colors">50+</div>
+                        <div class="text-sm text-gray-500">Phonemes</div>
+                    </div>
+                    <div class="group interactive-element">
+                        <div class="text-3xl font-display font-bold text-white group-hover:text-phonix-gold transition-colors">8D</div>
+                        <div class="text-sm text-gray-500">Haptic Audio</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Visual - Phone Mockup -->
+            <div class="relative hero-visual hidden lg:flex items-center justify-center">
+                <div class="relative">
+                    <!-- Floating Phone Mockup -->
+                    <div class="relative w-72 h-[580px] bg-gradient-to-b from-gray-800 to-gray-900 rounded-[3rem] border-4 border-gray-700 shadow-2xl overflow-hidden transform rotate-6 hover:rotate-0 transition-transform duration-700 edge-glow">
+                        <!-- Screen -->
+                        <div class="absolute inset-2 bg-black rounded-[2.5rem] overflow-hidden">
+                            <!-- Slideshow Container -->
+                            <div class="slideshow-container absolute inset-0">
+                                <!-- Slide 1: Face Mesh -->
+                                <div class="slideshow-slide active" data-slide="0">
+                                    <div class="absolute inset-0 bg-gradient-to-br from-gray-900 via-phonix-dark to-black">
+                                        <svg class="absolute inset-0 w-full h-full opacity-50" viewBox="0 0 300 580">
+                                            <defs>
+                                                <linearGradient id="meshGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                    <stop offset="0%" style="stop-color:#D4A574;stop-opacity:0.9" />
+                                                    <stop offset="100%" style="stop-color:#B87333;stop-opacity:0.5" />
+                                                </linearGradient>
+                                            </defs>
+                                            <ellipse cx="150" cy="240" rx="85" ry="105" fill="none" stroke="url(#meshGrad1)" stroke-width="1.5"/>
+                                            <rect x="105" y="270" width="90" height="45" fill="none" stroke="#D4A574" stroke-width="2" rx="22"/>
+                                            <circle cx="125" cy="292" r="4" fill="#D4A574" class="animate-pulse"/>
+                                            <circle cx="150" cy="302" r="4" fill="#D4A574" class="animate-pulse" style="animation-delay: 0.2s"/>
+                                            <circle cx="175" cy="292" r="4" fill="#D4A574" class="animate-pulse" style="animation-delay: 0.4s"/>
+                                            <circle cx="138" cy="280" r="3" fill="#B87333"/>
+                                            <circle cx="162" cy="280" r="3" fill="#B87333"/>
+                                        </svg>
+                                        <div class="absolute bottom-24 left-1/2 -translate-x-1/2">
+                                            <div class="flex items-center gap-2 px-4 py-2 rounded-full bg-phonix-copper/20 border border-phonix-copper/40">
+                                                <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                                                <span class="text-xs text-phonix-gold font-medium">Tracking Active</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Slide 2: Phoneme Analysis -->
+                                <div class="slideshow-slide" data-slide="1">
+                                    <div class="absolute inset-0 bg-gradient-to-br from-gray-900 via-blue-900/20 to-black flex flex-col items-center justify-center">
+                                        <div class="text-7xl font-bold text-phonix-gold mb-4">/æ/</div>
+                                        <div class="text-sm text-gray-400 mb-6">Vowel Detected</div>
+                                        <div class="flex items-end gap-2 h-24">
+                                            <div class="w-6 bg-phonix-copper/60 rounded-full phoneme-bar" style="height: 80%"></div>
+                                            <div class="w-6 bg-phonix-copper/80 rounded-full phoneme-bar" style="height: 45%; animation-delay: 0.1s"></div>
+                                            <div class="w-6 bg-phonix-copper/60 rounded-full phoneme-bar" style="height: 80%; animation-delay: 0.2s"></div>
+                                        </div>
+                                        <div class="mt-6 text-xs text-gray-500 font-mono">[100, 50, 100]</div>
+                                    </div>
+                                </div>
+                                <!-- Slide 3: Haptic Feedback -->
+                                <div class="slideshow-slide" data-slide="2">
+                                    <div class="absolute inset-0 bg-gradient-to-br from-gray-900 via-purple-900/20 to-black flex items-center justify-center">
+                                        <div class="relative">
+                                            <div class="w-36 h-36 rounded-full border-2 border-phonix-copper/50 animate-ping absolute inset-0"></div>
+                                            <div class="w-36 h-36 rounded-full bg-phonix-copper/30 flex items-center justify-center relative edge-glow animate-glow">
+                                                <div class="w-16 h-16 rounded-full bg-phonix-copper/50 animate-vibrate"></div>
+                                            </div>
+                                            <div class="text-center mt-6">
+                                                <div class="text-lg text-phonix-gold font-semibold">Haptic Active</div>
+                                                <div class="text-xs text-gray-400 mt-1">120 Hz Vibration</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Slide 4: Lip Reading Result -->
+                                <div class="slideshow-slide" data-slide="3">
+                                    <div class="absolute inset-0 bg-gradient-to-br from-gray-900 via-green-900/10 to-black flex flex-col items-center justify-center px-6">
+                                        <div class="glass-panel rounded-xl p-4 border border-phonix-copper/30 w-full">
+                                            <div class="text-xs text-phonix-gold mb-2 uppercase tracking-wider">Detected Speech</div>
+                                            <div class="text-white text-lg font-medium leading-relaxed">"Hello, I am practicing my pronunciation"</div>
+                                            <div class="flex items-center gap-2 mt-3">
+                                                <div class="h-1.5 flex-1 bg-gray-800 rounded-full overflow-hidden">
+                                                    <div class="h-full w-[98%] bg-gradient-to-r from-phonix-copper to-phonix-gold rounded-full"></div>
+                                                </div>
+                                                <span class="text-xs text-phonix-gold font-mono">98%</span>
+                                            </div>
+                                        </div>
+                                        <div class="mt-6 flex gap-2">
+                                            <span class="px-3 py-1 bg-phonix-copper/20 rounded-full text-xs text-phonix-gold">/h/</span>
+                                            <span class="px-3 py-1 bg-phonix-copper/20 rounded-full text-xs text-phonix-gold">/ə/</span>
+                                            <span class="px-3 py-1 bg-phonix-copper/20 rounded-full text-xs text-phonix-gold">/l/</span>
+                                            <span class="px-3 py-1 bg-phonix-copper/20 rounded-full text-xs text-phonix-gold">/oʊ/</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Slide Indicators -->
+                            <div class="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+                                <button class="slide-indicator w-2 h-2 rounded-full bg-phonix-copper transition-all" data-indicator="0"></button>
+                                <button class="slide-indicator w-2 h-2 rounded-full bg-white/30 transition-all" data-indicator="1"></button>
+                                <button class="slide-indicator w-2 h-2 rounded-full bg-white/30 transition-all" data-indicator="2"></button>
+                                <button class="slide-indicator w-2 h-2 rounded-full bg-white/30 transition-all" data-indicator="3"></button>
+                            </div>
+                            
+                            <!-- Notch -->
+                            <div class="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-7 bg-black rounded-b-2xl z-10"></div>
+                        </div>
+                        
+                        <!-- Side Button -->
+                        <div class="absolute right-[-4px] top-32 w-1 h-16 bg-gray-600 rounded-l"></div>
+                    </div>
+
+                    <!-- Orbiting Glow Effects -->
+                    <div class="absolute -inset-8 pointer-events-none">
+                        <div class="absolute top-0 right-0 w-32 h-32 rounded-full bg-phonix-copper/20 blur-3xl animate-glow"></div>
+                        <div class="absolute bottom-10 left-0 w-40 h-40 rounded-full bg-phonix-gold/10 blur-3xl animate-glow" style="animation-delay: 1s"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scroll Indicator -->
+        <div class="absolute bottom-8 left-1/2 -translate-x-1/2 content-layer scroll-indicator">
+            <div class="w-6 h-10 rounded-full border-2 border-white/20 flex justify-center pt-2 edge-glow">
+                <div class="w-1 h-2 bg-phonix-copper rounded-full animate-bounce"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Scrolling Marquee Banner -->
+    <section class="relative py-8 overflow-hidden border-y border-white/10 bg-black/50 backdrop-blur-sm">
+        <div class="marquee-container">
+            <div class="marquee-content flex items-center gap-8">
+                <span class="text-6xl md:text-8xl font-display font-bold metallic-text tracking-tighter">8D HAPTICS</span>
+                <span class="text-4xl text-phonix-copper/50">///</span>
+                <span class="text-6xl md:text-8xl font-display font-bold metallic-text tracking-tighter">REAL-TIME PROCESSING</span>
+                <span class="text-4xl text-phonix-copper/50">///</span>
+                <span class="text-6xl md:text-8xl font-display font-bold metallic-text tracking-tighter">LIP READING AI</span>
+                <span class="text-4xl text-phonix-copper/50">///</span>
+                <span class="text-6xl md:text-8xl font-display font-bold metallic-text tracking-tighter">8D HAPTICS</span>
+                <span class="text-4xl text-phonix-copper/50">///</span>
+                <span class="text-6xl md:text-8xl font-display font-bold metallic-text tracking-tighter">REAL-TIME PROCESSING</span>
+                <span class="text-4xl text-phonix-copper/50">///</span>
+                <span class="text-6xl md:text-8xl font-display font-bold metallic-text tracking-tighter">LIP READING AI</span>
+                <span class="text-4xl text-phonix-copper/50">///</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- System Architecture Section -->
+    <section id="architecture" class="relative py-24 overflow-hidden">
+        <div class="content-layer max-w-7xl mx-auto px-6">
+            <div class="text-center mb-16">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-phonix-copper/10 border border-phonix-copper/20 text-phonix-gold text-xs font-medium uppercase tracking-wider mb-6">
+                    System Design
+                </div>
+                <h2 class="font-display font-bold text-4xl md:text-5xl mb-6 glow-text">CHD <span class="gradient-text">Architecture</span></h2>
+                <p class="text-gray-400 max-w-2xl mx-auto">Real-time speech and lip-reading learning platform with haptic feedback. Supports teacher/student modes and remote lesson delivery.</p>
+            </div>
+
+            <!-- Architecture Diagram -->
+            <div class="relative max-w-6xl mx-auto">
+                <div class="absolute -inset-4 bg-gradient-to-r from-phonix-copper/10 via-phonix-gold/10 to-phonix-copper/10 rounded-3xl blur-2xl opacity-50"></div>
+                
+                <div class="relative glass-panel rounded-2xl p-8 border border-white/10">
+                    <!-- SVG Architecture Diagram -->
+                    <svg class="w-full" viewBox="0 0 1000 700" preserveAspectRatio="xMidYMid meet">
+                        <defs>
+                            <linearGradient id="frontendGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:#D4A574;stop-opacity:0.3" />
+                                <stop offset="100%" style="stop-color:#B87333;stop-opacity:0.1" />
+                            </linearGradient>
+                            <linearGradient id="backendGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:#3B82F6;stop-opacity:0.3" />
+                                <stop offset="100%" style="stop-color:#8B5CF6;stop-opacity:0.1" />
+                            </linearGradient>
+                            <linearGradient id="apiGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:#10B981;stop-opacity:0.3" />
+                                <stop offset="100%" style="stop-color:#059669;stop-opacity:0.1" />
+                            </linearGradient>
+                            <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                                <polygon points="0 0, 10 3.5, 0 7" fill="rgba(212, 165, 116, 0.6)" />
+                            </marker>
+                        </defs>
+
+                        <!-- Frontend Layer -->
+                        <rect x="20" y="20" width="960" height="160" rx="12" fill="url(#frontendGrad)" stroke="rgba(212, 165, 116, 0.3)" stroke-width="2"/>
+                        <text x="50" y="50" fill="#D4A574" font-size="12" font-weight="600" font-family="Space Grotesk">FRONTEND (Next.js 16 + React 19)</text>
+                        
+                        <!-- Frontend Components -->
+                        <rect x="50" y="70" width="200" height="90" rx="8" fill="rgba(26, 26, 26, 0.9)" stroke="rgba(212, 165, 116, 0.4)" stroke-width="1"/>
+                        <text x="150" y="95" fill="#F5F5F5" font-size="11" font-weight="600" text-anchor="middle" font-family="Inter">Dashboard</text>
+                        <text x="150" y="115" fill="#9CA3AF" font-size="9" text-anchor="middle" font-family="Inter">Viewer & Controls</text>
+                        <text x="150" y="130" fill="#9CA3AF" font-size="9" text-anchor="middle" font-family="Inter">/ws/viewer</text>
+                        
+                        <rect x="280" y="70" width="200" height="90" rx="8" fill="rgba(26, 26, 26, 0.9)" stroke="rgba(212, 165, 116, 0.4)" stroke-width="1"/>
+                        <text x="380" y="95" fill="#F5F5F5" font-size="11" font-weight="600" text-anchor="middle" font-family="Inter">Teacher</text>
+                        <text x="380" y="115" fill="#9CA3AF" font-size="9" text-anchor="middle" font-family="Inter">Lesson Controls</text>
+                        <text x="380" y="130" fill="#9CA3AF" font-size="9" text-anchor="middle" font-family="Inter">/ws/viewer</text>
+                        
+                        <rect x="510" y="70" width="200" height="90" rx="8" fill="rgba(26, 26, 26, 0.9)" stroke="rgba(212, 165, 116, 0.4)" stroke-width="1"/>
+                        <text x="610" y="95" fill="#F5F5F5" font-size="11" font-weight="600" text-anchor="middle" font-family="Inter">Student</text>
+                        <text x="610" y="115" fill="#9CA3AF" font-size="9" text-anchor="middle" font-family="Inter">Camera + Haptics</text>
+                        <text x="610" y="130" fill="#9CA3AF" font-size="9" text-anchor="middle" font-family="Inter">/ws/video</text>
+                        
+                        <rect x="740" y="70" width="200" height="90" rx="8" fill="rgba(26, 26, 26, 0.9)" stroke="rgba(212, 165, 116, 0.4)" stroke-width="1"/>
+                        <text x="840" y="95" fill="#F5F5F5" font-size="11" font-weight="600" text-anchor="middle" font-family="Inter">Speech-Haptic</text>
+                        <text x="840" y="115" fill="#9CA3AF" font-size="9" text-anchor="middle" font-family="Inter">Phone UI</text>
+                        <text x="840" y="130" fill="#9CA3AF" font-size="9" text-anchor="middle" font-family="Inter">/ws/speech-haptic</text>
+
+                        <!-- Connection Lines Frontend to Backend -->
+                        <line x1="150" y1="160" x2="150" y2="210" stroke="rgba(212, 165, 116, 0.4)" stroke-width="2" stroke-dasharray="5,5" marker-end="url(#arrowhead)"/>
+                        <line x1="380" y1="160" x2="380" y2="210" stroke="rgba(212, 165, 116, 0.4)" stroke-width="2" stroke-dasharray="5,5" marker-end="url(#arrowhead)"/>
+                        <line x1="610" y1="160" x2="610" y2="210" stroke="rgba(212, 165, 116, 0.4)" stroke-width="2" stroke-dasharray="5,5" marker-end="url(#arrowhead)"/>
+                        <line x1="840" y1="160" x2="840" y2="210" stroke="rgba(212, 165, 116, 0.4)" stroke-width="2" stroke-dasharray="5,5" marker-end="url(#arrowhead)"/>
+
+                        <!-- Backend Layer -->
+                        <rect x="20" y="210" width="960" height="280" rx="12" fill="url(#backendGrad)" stroke="rgba(59, 130, 246, 0.3)" stroke-width="2"/>
+                        <text x="50" y="240" fill="#60A5FA" font-size="12" font-weight="600" font-family="Space Grotesk">BACKEND (FastAPI + Python)</text>
+
+                        <!-- WebSocket Managers -->
+                        <rect x="50" y="260" width="920" height="50" rx="8" fill="rgba(17, 17, 17, 0.9)" stroke="rgba(139, 92, 246, 0.4)" stroke-width="1"/>
+                        <text x="70" y="280" fill="#A78BFA" font-size="10" font-weight="600" font-family="Inter">WebSocket Managers:</text>
+                        <text x="220" y="280" fill="#9CA3AF" font-size="9" font-family="Inter">ConnectionManager</text>
+                        <text x="340" y="280" fill="#9CA3AF" font-size="9" font-family="Inter">|</text>
+                        <text x="355" y="280" fill="#9CA3AF" font-size="9" font-family="Inter">ViewerManager</text>
+                        <text x="455" y="280" fill="#9CA3AF" font-size="9" font-family="Inter">|</text>
+                        <text x="470" y="280" fill="#9CA3AF" font-size="9" font-family="Inter">HapticManager</text>
+                        <text x="570" y="280" fill="#9CA3AF" font-size="9" font-family="Inter">|</text>
+                        <text x="585" y="280" fill="#9CA3AF" font-size="9" font-family="Inter">SpeechHapticConnectionManager</text>
+
+                        <!-- Processing Engines -->
+                        <rect x="50" y="330" width="210" height="140" rx="8" fill="rgba(26, 26, 26, 0.9)" stroke="rgba(59, 130, 246, 0.4)" stroke-width="1"/>
+                        <text x="155" y="355" fill="#60A5FA" font-size="11" font-weight="600" text-anchor="middle" font-family="Inter">MediaPipe</text>
+                        <text x="155" y="375" fill="#9CA3AF" font-size="9" text-anchor="middle" font-family="Inter">Face Mesh Processor</text>
+                        <text x="155" y="395" fill="#6B7280" font-size="8" text-anchor="middle" font-family="Inter">• Lip Landmarks</text>
+                        <text x="155" y="410" fill="#6B7280" font-size="8" text-anchor="middle" font-family="Inter">• Bounding Box</text>
+                        <text x="155" y="425" fill="#6B7280" font-size="8" text-anchor="middle" font-family="Inter">• Mouth State</text>
+                        <text x="155" y="445" fill="#6B7280" font-size="8" text-anchor="middle" font-family="Inter">face_landmarker.task</text>
+
+                        <rect x="290" y="330" width="210" height="140" rx="8" fill="rgba(26, 26, 26, 0.9)" stroke="rgba(212, 165, 116, 0.4)" stroke-width="1"/>
+                        <text x="395" y="355" fill="#D4A574" font-size="11" font-weight="600" text-anchor="middle" font-family="Inter">Lip Reading</text>
+                        <text x="395" y="375" fill="#9CA3AF" font-size="9" text-anchor="middle" font-family="Inter">Gemini Vision Engine</text>
+                        <text x="395" y="395" fill="#6B7280" font-size="8" text-anchor="middle" font-family="Inter">• Text Extraction</text>
+                        <text x="395" y="410" fill="#6B7280" font-size="8" text-anchor="middle" font-family="Inter">• Confidence Score</text>
+                        <text x="395" y="425" fill="#6B7280" font-size="8" text-anchor="middle" font-family="Inter">• Phoneme Detection</text>
+                        <text x="395" y="445" fill="#6B7280" font-size="8" text-anchor="middle" font-family="Inter">Gemini 2.0 Flash</text>
+
+                        <rect x="530" y="330" width="210" height="140" rx="8" fill="rgba(26, 26, 26, 0.9)" stroke="rgba(16, 185, 129, 0.4)" stroke-width="1"/>
+                        <text x="635" y="355" fill="#34D399" font-size="11" font-weight="600" text-anchor="middle" font-family="Inter">Phoneme Engine</text>
+                        <text x="635" y="375" fill="#9CA3AF" font-size="9" text-anchor="middle" font-family="Inter">Lesson Playback</text>
+                        <text x="635" y="395" fill="#6B7280" font-size="8" text-anchor="middle" font-family="Inter">• JSON Lessons</text>
+                        <text x="635" y="410" fill="#6B7280" font-size="8" text-anchor="middle" font-family="Inter">• Timing Control</text>
+                        <text x="635" y="425" fill="#6B7280" font-size="8" text-anchor="middle" font-family="Inter">• Haptic Triggers</text>
+                        <text x="635" y="445" fill="#6B7280" font-size="8" text-anchor="middle" font-family="Inter">/playback/start|pause|stop</text>
+
+                        <rect x="770" y="330" width="200" height="140" rx="8" fill="rgba(26, 26, 26, 0.9)" stroke="rgba(139, 92, 246, 0.4)" stroke-width="1"/>
+                        <text x="870" y="355" fill="#A78BFA" font-size="11" font-weight="600" text-anchor="middle" font-family="Inter">Speech-Haptic</text>
+                        <text x="870" y="375" fill="#9CA3AF" font-size="9" text-anchor="middle" font-family="Inter">Pipeline</text>
+                        <text x="870" y="395" fill="#6B7280" font-size="8" text-anchor="middle" font-family="Inter">• Mic Capture</text>
+                        <text x="870" y="410" fill="#6B7280" font-size="8" text-anchor="middle" font-family="Inter">• ElevenLabs STT</text>
+                        <text x="870" y="425" fill="#6B7280" font-size="8" text-anchor="middle" font-family="Inter">• RMS → Haptic</text>
+                        <text x="870" y="445" fill="#6B7280" font-size="8" text-anchor="middle" font-family="Inter">/api/speech-haptic/*</text>
+
+                        <!-- Connection Lines Backend to APIs -->
+                        <line x1="155" y1="470" x2="155" y2="520" stroke="rgba(16, 185, 129, 0.4)" stroke-width="2" stroke-dasharray="5,5" marker-end="url(#arrowhead)"/>
+                        <line x1="395" y1="470" x2="395" y2="520" stroke="rgba(16, 185, 129, 0.4)" stroke-width="2" stroke-dasharray="5,5" marker-end="url(#arrowhead)"/>
+                        <line x1="870" y1="470" x2="870" y2="520" stroke="rgba(16, 185, 129, 0.4)" stroke-width="2" stroke-dasharray="5,5" marker-end="url(#arrowhead)"/>
+
+                        <!-- External APIs Layer -->
+                        <rect x="20" y="520" width="960" height="160" rx="12" fill="url(#apiGrad)" stroke="rgba(16, 185, 129, 0.3)" stroke-width="2"/>
+                        <text x="50" y="550" fill="#34D399" font-size="12" font-weight="600" font-family="Space Grotesk">EXTERNAL APIs</text>
+
+                        <!-- API Components -->
+                        <rect x="50" y="570" width="280" height="90" rx="8" fill="rgba(26, 26, 26, 0.9)" stroke="rgba(16, 185, 129, 0.4)" stroke-width="1"/>
+                        <text x="190" y="595" fill="#34D399" font-size="11" font-weight="600" text-anchor="middle" font-family="Inter">MediaPipe Model</text>
+                        <text x="190" y="615" fill="#9CA3AF" font-size="9" text-anchor="middle" font-family="Inter">face_landmarker.task</text>
+                        <text x="190" y="635" fill="#6B7280" font-size="8" text-anchor="middle" font-family="Inter">Real-time face mesh & lip detection</text>
+
+                        <rect x="360" y="570" width="280" height="90" rx="8" fill="rgba(26, 26, 26, 0.9)" stroke="rgba(212, 165, 116, 0.4)" stroke-width="1"/>
+                        <text x="500" y="595" fill="#D4A574" font-size="11" font-weight="600" text-anchor="middle" font-family="Inter">Google Gemini API</text>
+                        <text x="500" y="615" fill="#9CA3AF" font-size="9" text-anchor="middle" font-family="Inter">Vision + Translation</text>
+                        <text x="500" y="635" fill="#6B7280" font-size="8" text-anchor="middle" font-family="Inter">Lip reading & multilingual support</text>
+
+                        <rect x="670" y="570" width="280" height="90" rx="8" fill="rgba(26, 26, 26, 0.9)" stroke="rgba(139, 92, 246, 0.4)" stroke-width="1"/>
+                        <text x="810" y="595" fill="#A78BFA" font-size="11" font-weight="600" text-anchor="middle" font-family="Inter">ElevenLabs API</text>
+                        <text x="810" y="615" fill="#9CA3AF" font-size="9" text-anchor="middle" font-family="Inter">STT + TTS</text>
+                        <text x="810" y="635" fill="#6B7280" font-size="8" text-anchor="middle" font-family="Inter">scribe_v2 | Voice cues & transcription</text>
+
+                        <!-- Data Flow Labels -->
+                        <text x="170" y="195" fill="#D4A574" font-size="8" font-family="Inter">ws/viewer</text>
+                        <text x="400" y="195" fill="#D4A574" font-size="8" font-family="Inter">ws/viewer</text>
+                        <text x="625" y="195" fill="#D4A574" font-size="8" font-family="Inter">ws/video</text>
+                        <text x="855" y="195" fill="#D4A574" font-size="8" font-family="Inter">ws/speech-haptic</text>
+                    </svg>
+
+                    <!-- Legend -->
+                    <div class="mt-6 flex flex-wrap justify-center gap-6 text-xs">
+                        <div class="flex items-center gap-2">
+                            <div class="w-3 h-3 rounded bg-phonix-copper/40 border border-phonix-copper"></div>
+                            <span class="text-gray-400">Frontend (Next.js)</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <div class="w-3 h-3 rounded bg-blue-500/40 border border-blue-500"></div>
+                            <span class="text-gray-400">Backend (FastAPI)</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <div class="w-3 h-3 rounded bg-green-500/40 border border-green-500"></div>
+                            <span class="text-gray-400">External APIs</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-0.5 border-t border-dashed border-phonix-copper/60"></div>
+                            <span class="text-gray-400">WebSocket Connection</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Data Flow Cards -->
+            <div class="mt-12 grid md:grid-cols-3 gap-6">
+                <div class="feature-card rounded-xl p-6">
+                    <div class="w-10 h-10 rounded-lg bg-phonix-copper/20 flex items-center justify-center mb-4">
+                        <svg class="w-5 h-5 text-phonix-copper" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                        </svg>
+                    </div>
+                    <h4 class="font-semibold text-white mb-2">Video Pipeline</h4>
+                    <p class="text-sm text-gray-400">Student phone captures camera → MediaPipe Face Mesh → lip landmarks → broadcast to viewers with bounding boxes</p>
+                </div>
+                
+                <div class="feature-card rounded-xl p-6">
+                    <div class="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center mb-4">
+                        <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                    </div>
+                    <h4 class="font-semibold text-white mb-2">Lip Reading</h4>
+                    <p class="text-sm text-gray-400">Cropped lip frames → Gemini Vision every 3s → text, confidence, phonemes → broadcast to dashboard</p>
+                </div>
+                
+                <div class="feature-card rounded-xl p-6">
+                    <div class="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center mb-4">
+                        <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                    </div>
+                    <h4 class="font-semibold text-white mb-2">Speech-Haptic</h4>
+                    <p class="text-sm text-gray-400">Teacher mic → ElevenLabs STT → speech chunks → RMS intensity → haptic events → student phone vibration</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Grid -->
+    <section id="features" class="relative py-32">
+        <div class="content-layer max-w-7xl mx-auto px-6">
+            <div class="grid lg:grid-cols-2 gap-16 items-center mb-32">
+                <div class="space-y-6">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-phonix-copper/10 border border-phonix-copper/20 text-phonix-gold text-xs font-medium uppercase tracking-wider edge-glow">
+                        Lip Reading AI
+                    </div>
+                    <h2 class="font-display font-bold text-4xl md:text-5xl leading-tight glow-text">
+                        See What You <span class="text-phonix-copper">Say</span>
+                    </h2>
+                    <p class="text-gray-400 text-lg leading-relaxed">
+                        Our Gemini 2.0 Flash Vision integration analyzes lip movements in real-time, converting visual speech into text with 98% accuracy. The AI detects phonemes, confidence scores, and mouth states instantly.
+                    </p>
+                    <ul class="space-y-4">
+                        <li class="flex items-start gap-3">
+                            <div class="w-6 h-6 rounded-full bg-phonix-copper/20 flex items-center justify-center flex-shrink-0 mt-0.5 edge-glow">
+                                <svg class="w-3 h-3 text-phonix-copper" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                </svg>
+                            </div>
+                            <span class="text-gray-300">Real-time lip landmark detection with MediaPipe</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <div class="w-6 h-6 rounded-full bg-phonix-copper/20 flex items-center justify-center flex-shrink-0 mt-0.5 edge-glow">
+                                <svg class="w-3 h-3 text-phonix-copper" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                </svg>
+                            </div>
+                            <span class="text-gray-300">Gemini 2.0 Flash Vision for text extraction</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <div class="w-6 h-6 rounded-full bg-phonix-copper/20 flex items-center justify-center flex-shrink-0 mt-0.5 edge-glow">
+                                <svg class="w-3 h-3 text-phonix-copper" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                </svg>
+                            </div>
+                            <span class="text-gray-300">Mouth state detection: closed, open, talking</span>
+                        </li>
+                    </ul>
+                </div>
+                
+                <!-- Visual Representation -->
+                <div class="relative">
+                    <div class="absolute inset-0 bg-gradient-to-r from-phonix-copper/20 to-phonix-gold/20 rounded-3xl blur-3xl animate-glow"></div>
+                    <div class="relative glass-panel rounded-3xl p-8 border border-white/10 edge-glow">
+                        <div class="aspect-video bg-black rounded-2xl overflow-hidden relative">
+                            <div class="absolute inset-0 bg-gradient-to-br from-gray-900 to-black">
+                                <svg class="absolute inset-0 w-full h-full" viewBox="0 0 400 300">
+                                    <defs>
+                                        <linearGradient id="faceGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                            <stop offset="0%" style="stop-color:#D4A574;stop-opacity:0.6" />
+                                            <stop offset="100%" style="stop-color:#B87333;stop-opacity:0.3" />
+                                        </linearGradient>
+                                    </defs>
+                                    <ellipse cx="200" cy="150" rx="100" ry="120" fill="none" stroke="url(#faceGrad)" stroke-width="1.5" opacity="0.6"/>
+                                    <rect x="150" y="180" width="100" height="50" rx="25" fill="none" stroke="#D4A574" stroke-width="2" stroke-dasharray="5,5" class="animate-pulse"/>
+                                    <circle cx="160" cy="200" r="4" fill="#D4A574">
+                                        <animate attributeName="opacity" values="1;0.5;1" dur="2s" repeatCount="indefinite"/>
+                                    </circle>
+                                    <circle cx="200" cy="210" r="4" fill="#D4A574">
+                                        <animate attributeName="opacity" values="1;0.5;1" dur="2s" begin="0.3s" repeatCount="indefinite"/>
+                                    </circle>
+                                    <circle cx="240" cy="200" r="4" fill="#D4A574">
+                                        <animate attributeName="opacity" values="1;0.5;1" dur="2s" begin="0.6s" repeatCount="indefinite"/>
+                                    </circle>
+                                    <circle cx="180" cy="190" r="3" fill="#B87333"/>
+                                    <circle cx="220" cy="190" r="3" fill="#B87333"/>
+                                </svg>
+                                
+                                <div class="absolute top-4 left-4 px-3 py-1.5 rounded-lg bg-black/60 backdrop-blur border border-white/10 edge-glow">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                                        <span class="text-xs font-mono text-gray-300">LIP_READING_ACTIVE</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="absolute bottom-4 left-4 right-4">
+                                    <div class="glass-panel rounded-lg p-3 border border-phonix-copper/30 edge-glow">
+                                        <div class="text-xs text-phonix-gold mb-1">Detected:</div>
+                                        <div class="text-white font-mono text-sm">"Hello, I am practicing my pronunciation"</div>
+                                        <div class="flex items-center gap-2 mt-2">
+                                            <div class="h-1 flex-1 bg-gray-800 rounded-full overflow-hidden">
+                                                <div class="h-full w-[98%] bg-gradient-to-r from-phonix-copper to-phonix-gold rounded-full"></div>
+                                            </div>
+                                            <span class="text-xs text-phonix-gold">98%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Haptic Feedback Feature -->
+            <div class="grid lg:grid-cols-2 gap-16 items-center mb-32">
+                <div class="order-2 lg:order-1 relative">
+                    <div class="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-3xl blur-3xl animate-glow" style="animation-delay: 0.5s"></div>
+                    <div class="relative glass-panel rounded-3xl p-8 border border-white/10 edge-glow">
+                        <div class="grid grid-cols-3 gap-4">
+                            <div class="bg-black/40 rounded-xl p-4 border border-white/5 hover:border-phonix-copper/50 transition-colors group edge-glow">
+                                <div class="text-phonix-gold text-2xl font-bold mb-2">/æ/</div>
+                                <div class="text-xs text-gray-500 mb-3">Cat vowel</div>
+                                <div class="flex items-end gap-1 h-12">
+                                    <div class="flex-1 bg-phonix-copper/40 rounded-t phoneme-bar" style="height: 80%"></div>
+                                    <div class="flex-1 bg-phonix-copper/60 rounded-t phoneme-bar" style="height: 40%; animation-delay: 0.1s"></div>
+                                    <div class="flex-1 bg-phonix-copper/40 rounded-t phoneme-bar" style="height: 80%; animation-delay: 0.2s"></div>
+                                </div>
+                                <div class="mt-2 text-[10px] text-gray-600 font-mono">[100,50,100]</div>
+                            </div>
+                            
+                            <div class="bg-black/40 rounded-xl p-4 border border-white/5 hover:border-phonix-copper/50 transition-colors group edge-glow">
+                                <div class="text-phonix-gold text-2xl font-bold mb-2">/t/</div>
+                                <div class="text-xs text-gray-500 mb-3">Stop consonant</div>
+                                <div class="flex items-end gap-1 h-12">
+                                    <div class="flex-1 bg-blue-500/60 rounded-t phoneme-bar" style="height: 100%"></div>
+                                    <div class="flex-1 bg-blue-500/30 rounded-t phoneme-bar" style="height: 20%; animation-delay: 0.1s"></div>
+                                </div>
+                                <div class="mt-2 text-[10px] text-gray-600 font-mono">[50,30]</div>
+                            </div>
+                            
+                            <div class="bg-black/40 rounded-xl p-4 border border-white/5 hover:border-phonix-copper/50 transition-colors group edge-glow">
+                                <div class="text-phonix-gold text-2xl font-bold mb-2">/z/</div>
+                                <div class="text-xs text-gray-500 mb-3">Buzz fricative</div>
+                                <div class="flex items-end gap-1 h-12">
+                                    <div class="flex-1 bg-purple-500/40 rounded-t phoneme-bar" style="height: 60%"></div>
+                                    <div class="flex-1 bg-purple-500/60 rounded-t phoneme-bar" style="height: 60%; animation-delay: 0.05s"></div>
+                                    <div class="flex-1 bg-purple-500/40 rounded-t phoneme-bar" style="height: 60%; animation-delay: 0.1s"></div>
+                                    <div class="flex-1 bg-purple-500/60 rounded-t phoneme-bar" style="height: 60%; animation-delay: 0.15s"></div>
+                                </div>
+                                <div class="mt-2 text-[10px] text-gray-600 font-mono">[30,30,30,30]</div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-6 p-4 bg-black/40 rounded-xl border border-white/5 edge-glow">
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="text-xs text-gray-400 uppercase tracking-wider">Laryngeal Haptics</span>
+                                <span class="text-xs text-phonix-gold">Active</span>
+                            </div>
+                            <div class="flex items-center gap-4">
+                                <div class="flex-1 h-16 bg-gray-900 rounded-lg overflow-hidden relative edge-glow">
+                                    <div class="absolute inset-0 flex items-center justify-center">
+                                        <div class="w-full h-px bg-phonix-copper/30"></div>
+                                    </div>
+                                    <svg class="absolute inset-0 w-full h-full" preserveAspectRatio="none">
+                                        <path d="M0,32 Q50,10 100,32 T200,32 T300,32 T400,32" stroke="#D4A574" stroke-width="2" fill="none" class="animate-pulse">
+                                            <animate attributeName="d" 
+                                                values="M0,32 Q50,10 100,32 T200,32 T300,32 T400,32;
+                                                        M0,32 Q50,54 100,32 T200,32 T300,32 T400,32;
+                                                        M0,32 Q50,10 100,32 T200,32 T300,32 T400,32" 
+                                                dur="2s" 
+                                                repeatCount="indefinite"/>
+                                        </path>
+                                    </svg>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-2xl font-bold text-white">120<span class="text-sm text-gray-500">Hz</span></div>
+                                    <div class="text-xs text-gray-500">Pitch detected</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="order-1 lg:order-2 space-y-6">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-xs font-medium uppercase tracking-wider edge-glow">
+                        8D Haptic Engine
+                    </div>
+                    <h2 class="font-display font-bold text-4xl md:text-5xl leading-tight glow-text">
+                        Feel Every <span class="text-phonix-copper">Phoneme</span>
+                    </h2>
+                    <p class="text-gray-400 text-lg leading-relaxed">
+                        Our proprietary haptic engine translates speech into tactile feedback. Vowels buzz long, consonants tap short, and pitch becomes throat vibration. Feel the difference between /æ/ and /ɑ/ through your fingertips.
+                    </p>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="glass-panel rounded-xl p-4 border border-white/5 edge-glow">
+                            <div class="text-phonix-gold font-bold text-3xl mb-1">50+</div>
+                            <div class="text-sm text-gray-400">Unique haptic patterns</div>
+                        </div>
+                        <div class="glass-panel rounded-xl p-4 border border-white/5 edge-glow">
+                            <div class="text-phonix-gold font-bold text-3xl mb-1">20Hz</div>
+                            <div class="text-sm text-gray-400">Update frequency</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Dashboard Preview -->
+    <section id="dashboard" class="relative py-32 overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-b from-transparent via-phonix-copper/5 to-transparent"></div>
+        <div class="content-layer max-w-7xl mx-auto px-6">
+            <div class="text-center mb-16">
+                <h2 class="font-display font-bold text-4xl md:text-5xl mb-6 glow-text">Teacher <span class="gradient-text">Dashboard</span></h2>
+                <p class="text-gray-400 max-w-2xl mx-auto">Real-time monitoring, lesson control, and AI-powered insights for educators.</p>
+            </div>
+
+            <!-- Dashboard Mockup -->
+            <div class="relative max-w-6xl mx-auto">
+                <div class="absolute -inset-4 bg-gradient-to-r from-phonix-copper/20 via-phonix-gold/20 to-phonix-copper/20 rounded-3xl blur-2xl opacity-50"></div>
+                <div class="relative glass-panel rounded-2xl border border-white/10 overflow-hidden shadow-2xl edge-glow">
+                    <!-- Browser Chrome -->
+                    <div class="bg-gray-900 border-b border-white/5 px-4 py-3 flex items-center gap-2">
+                        <div class="flex gap-1.5">
+                            <div class="w-3 h-3 rounded-full bg-red-500/80"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-500/80"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-500/80"></div>
+                        </div>
+                        <div class="flex-1 mx-4">
+                            <div class="bg-black/50 rounded-md px-3 py-1.5 text-xs text-gray-500 text-center font-mono">localhost:3000/dashboard</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Dashboard Content -->
+                    <div class="bg-gray-950 p-6 grid grid-cols-12 gap-4 min-h-[600px]">
+                        <!-- Sidebar -->
+                        <div class="col-span-2 space-y-2">
+                            <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-phonix-copper/20 text-phonix-gold">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path>
+                                </svg>
+                                <span class="text-xs font-medium">Overview</span>
+                            </div>
+                            <div class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-400 hover:bg-white/5 transition-colors">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                                </svg>
+                                <span class="text-xs font-medium">Students</span>
+                            </div>
+                            <div class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-400 hover:bg-white/5 transition-colors">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                                </svg>
+                                <span class="text-xs font-medium">Lessons</span>
+                            </div>
+                        </div>
+
+                        <!-- Main Content -->
+                        <div class="col-span-7 space-y-4">
+                            <!-- Video Feed -->
+                            <div class="bg-black rounded-xl overflow-hidden border border-white/10 relative aspect-video">
+                                <div class="absolute inset-0 bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
+                                    <div class="text-center">
+                                        <div class="w-16 h-16 rounded-full bg-phonix-copper/20 flex items-center justify-center mx-auto mb-2 animate-pulse">
+                                            <svg class="w-8 h-8 text-phonix-copper" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                            </svg>
+                                        </div>
+                                        <span class="text-sm text-gray-500">Live Feed Active</span>
+                                    </div>
+                                </div>
+                                <div class="absolute top-4 left-4 px-2 py-1 bg-green-500/20 border border-green-500/30 rounded text-[10px] text-green-400 font-mono">LIVE</div>
+                                <div class="absolute bottom-4 right-4 px-2 py-1 bg-black/60 backdrop-blur rounded border border-white/10 text-[10px] text-gray-400">Latency: 24ms</div>
+                            </div>
+
+                            <!-- Timeline -->
+                            <div class="bg-black/40 rounded-xl p-4 border border-white/5">
+                                <div class="flex items-center justify-between mb-3">
+                                    <span class="text-xs text-gray-400 uppercase tracking-wider">Phoneme Timeline</span>
+                                    <div class="flex gap-2">
+                                        <button class="p-1.5 rounded bg-phonix-copper/20 text-phonix-gold hover:bg-phonix-copper/30 transition-colors">
+                                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path>
+                                            </svg>
+                                        </button>
+                                        <button class="p-1.5 rounded bg-white/5 text-gray-400 hover:bg-white/10 transition-colors">
+                                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="h-12 flex items-end gap-1">
+                                    <div class="flex-1 bg-phonix-copper/30 rounded-t phoneme-bar" style="height: 40%"></div>
+                                    <div class="flex-1 bg-phonix-copper/50 rounded-t phoneme-bar" style="height: 60%; animation-delay: 0.1s"></div>
+                                    <div class="flex-1 bg-phonix-copper/70 rounded-t phoneme-bar" style="height: 80%; animation-delay: 0.2s"></div>
+                                    <div class="flex-1 bg-phonix-copper rounded-t phoneme-bar" style="height: 100%; animation-delay: 0.3s"></div>
+                                    <div class="flex-1 bg-blue-500/50 rounded-t phoneme-bar" style="height: 50%; animation-delay: 0.4s"></div>
+                                    <div class="flex-1 bg-phonix-copper/60 rounded-t phoneme-bar" style="height: 70%; animation-delay: 0.5s"></div>
+                                    <div class="flex-1 bg-purple-500/50 rounded-t phoneme-bar" style="height: 45%; animation-delay: 0.6s"></div>
+                                    <div class="flex-1 bg-phonix-copper/40 rounded-t phoneme-bar" style="height: 55%; animation-delay: 0.7s"></div>
+                                </div>
+                                <div class="flex justify-between mt-2 text-[10px] text-gray-500 font-mono">
+                                    <span>0:00</span>
+                                    <span>0:02</span>
+                                    <span>0:04</span>
+                                    <span>0:06</span>
+                                    <span>0:08</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right Panel -->
+                        <div class="col-span-3 space-y-4">
+                            <!-- Student Stats -->
+                            <div class="bg-black/40 rounded-xl p-4 border border-white/5">
+                                <div class="text-xs text-gray-400 uppercase tracking-wider mb-3">Student Progress</div>
+                                <div class="space-y-3">
+                                    <div>
+                                        <div class="flex justify-between text-xs mb-1">
+                                            <span class="text-gray-300">Accuracy</span>
+                                            <span class="text-phonix-gold">87%</span>
+                                        </div>
+                                        <div class="h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                                            <div class="h-full w-[87%] bg-gradient-to-r from-phonix-copper to-phonix-gold rounded-full"></div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div class="flex justify-between text-xs mb-1">
+                                            <span class="text-gray-300">Fluency</span>
+                                            <span class="text-phonix-gold">72%</span>
+                                        </div>
+                                        <div class="h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                                            <div class="h-full w-[72%] bg-gradient-to-r from-blue-500 to-purple-500 rounded-full"></div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div class="flex justify-between text-xs mb-1">
+                                            <span class="text-gray-300">Confidence</span>
+                                            <span class="text-phonix-gold">91%</span>
+                                        </div>
+                                        <div class="h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                                            <div class="h-full w-[91%] bg-gradient-to-r from-green-500 to-emerald-500 rounded-full"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Recent Phonemes -->
+                            <div class="bg-black/40 rounded-xl p-4 border border-white/5">
+                                <div class="text-xs text-gray-400 uppercase tracking-wider mb-3">Recent Phonemes</div>
+                                <div class="flex flex-wrap gap-2">
+                                    <span class="px-2 py-1 bg-phonix-copper/20 rounded text-xs text-phonix-gold font-mono">/æ/</span>
+                                    <span class="px-2 py-1 bg-blue-500/20 rounded text-xs text-blue-400 font-mono">/t/</span>
+                                    <span class="px-2 py-1 bg-purple-500/20 rounded text-xs text-purple-400 font-mono">/z/</span>
+                                    <span class="px-2 py-1 bg-green-500/20 rounded text-xs text-green-400 font-mono">/i/</span>
+                                    <span class="px-2 py-1 bg-phonix-copper/20 rounded text-xs text-phonix-gold font-mono">/th/</span>
+                                </div>
+                            </div>
+
+                            <!-- AI Insights -->
+                            <div class="bg-gradient-to-br from-phonix-copper/20 to-phonix-gold/20 rounded-xl p-4 border border-phonix-copper/30">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <svg class="w-4 h-4 text-phonix-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                    </svg>
+                                    <span class="text-xs font-medium text-phonix-gold">AI Insight</span>
+                                </div>
+                                <p class="text-xs text-gray-300 leading-relaxed">Student shows improvement in vowel pronunciation. Recommend practicing /æ/ vs /ɑ/ distinction.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="relative py-32 overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-r from-phonix-copper/10 via-transparent to-phonix-gold/10"></div>
+        <div class="content-layer max-w-4xl mx-auto px-6 text-center">
+            <h2 class="font-display font-bold text-5xl md:text-6xl mb-6 glow-text">
+                Ready to <span class="gradient-text">Feel</span> the Difference?
+            </h2>
+            <p class="text-xl text-gray-400 mb-10 leading-relaxed">
+                Join thousands of learners and educators transforming speech therapy with AI-powered haptic feedback.
+            </p>
+            <div class="flex flex-wrap justify-center gap-4">
+                <button class="px-10 py-5 bg-gradient-to-r from-phonix-copper to-phonix-gold text-white font-semibold rounded-full hover:shadow-2xl hover:shadow-phonix-copper/30 transition-all transform hover:scale-105 interactive-element edge-glow">
+                    Start Free Trial
+                </button>
+                <button class="px-10 py-5 glass-panel text-white font-semibold rounded-full hover:bg-white/5 transition-all border border-white/10 interactive-element edge-glow">
+                    Contact Sales
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="relative py-16 border-t border-white/5">
+        <div class="content-layer max-w-7xl mx-auto px-6">
+            <div class="grid md:grid-cols-4 gap-12 mb-12">
+                <div class="space-y-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-phonix-copper to-phonix-gold flex items-center justify-center">
+                            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path>
+                            </svg>
+                        </div>
+                        <span class="font-display font-bold text-xl text-white">
+                            Haptic<span class="text-phonix-copper">Phonix</span>
+                        </span>
+                    </div>
+                    <p class="text-sm text-gray-500 leading-relaxed">
+                        Revolutionary speech learning through AI lip-reading and haptic feedback technology.
+                    </p>
+                </div>
+                
+                <div>
+                    <h4 class="font-semibold text-white mb-4">Product</h4>
+                    <ul class="space-y-2">
+                        <li><a href="#" class="text-sm text-gray-400 hover:text-phonix-gold transition-colors">Features</a></li>
+                        <li><a href="#" class="text-sm text-gray-400 hover:text-phonix-gold transition-colors">Pricing</a></li>
+                        <li><a href="#" class="text-sm text-gray-400 hover:text-phonix-gold transition-colors">API</a></li>
+                        <li><a href="#" class="text-sm text-gray-400 hover:text-phonix-gold transition-colors">Integrations</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 class="font-semibold text-white mb-4">Resources</h4>
+                    <ul class="space-y-2">
+                        <li><a href="#" class="text-sm text-gray-400 hover:text-phonix-gold transition-colors">Documentation</a></li>
+                        <li><a href="#" class="text-sm text-gray-400 hover:text-phonix-gold transition-colors">Tutorials</a></li>
+                        <li><a href="#" class="text-sm text-gray-400 hover:text-phonix-gold transition-colors">Blog</a></li>
+                        <li><a href="#" class="text-sm text-gray-400 hover:text-phonix-gold transition-colors">Support</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 class="font-semibold text-white mb-4">Company</h4>
+                    <ul class="space-y-2">
+                        <li><a href="#" class="text-sm text-gray-400 hover:text-phonix-gold transition-colors">About</a></li>
+                        <li><a href="#" class="text-sm text-gray-400 hover:text-phonix-gold transition-colors">Careers</a></li>
+                        <li><a href="#" class="text-sm text-gray-400 hover:text-phonix-gold transition-colors">Privacy</a></li>
+                        <li><a href="#" class="text-sm text-gray-400 hover:text-phonix-gold transition-colors">Terms</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
+                <p class="text-sm text-gray-500">© 2025 HapticPhonix. All rights reserved.</p>
+                <div class="flex gap-4">
+                    <a href="#" class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-phonix-copper/20 transition-colors">
+                        <svg class="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"/>
+                        </svg>
+                    </a>
+                    <a href="#" class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-phonix-copper/20 transition-colors">
+                        <svg class="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                        </svg>
+                    </a>
+                    <a href="#" class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-phonix-copper/20 transition-colors">
+                        <svg class="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
+                        </svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // ============================================
+        // THREE.JS PARTICLE BACKGROUND
+        // ============================================
+        
+        const canvasContainer = document.getElementById('canvas-container');
+        
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        canvasContainer.appendChild(renderer.domElement);
+        
+        const particleCount = 150;
+        const particles = new THREE.BufferGeometry();
+        const positions = new Float32Array(particleCount * 3);
+        const velocities = [];
+        const originalPositions = [];
+        
+        for (let i = 0; i < particleCount; i++) {
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.acos((Math.random() * 2) - 1);
+            const radius = 3 + Math.random() * 4;
+            
+            const x = radius * Math.sin(phi) * Math.cos(theta);
+            const y = radius * Math.sin(phi) * Math.sin(theta);
+            const z = radius * Math.cos(phi);
+            
+            positions[i * 3] = x;
+            positions[i * 3 + 1] = y;
+            positions[i * 3 + 2] = z;
+            
+            originalPositions.push({ x, y, z });
+            velocities.push({
+                x: (Math.random() - 0.5) * 0.002,
+                y: (Math.random() - 0.5) * 0.002,
+                z: (Math.random() - 0.5) * 0.002
+            });
+        }
+        
+        particles.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        
+        const particleMaterial = new THREE.PointsMaterial({
+            color: 0xD4A574,
+            size: 0.05,
+            transparent: true,
+            opacity: 0.8,
+            blending: THREE.AdditiveBlending
+        });
+        
+        const particleSystem = new THREE.Points(particles, particleMaterial);
+        scene.add(particleSystem);
+        
+        const lineMaterial = new THREE.LineBasicMaterial({
+            color: 0xB87333,
+            transparent: true,
+            opacity: 0.15
+        });
+        
+        const lineGeometry = new THREE.BufferGeometry();
+        const linePositions = new Float32Array(particleCount * particleCount * 6);
+        lineGeometry.setAttribute('position', new THREE.BufferAttribute(linePositions, 3));
+        const lines = new THREE.LineSegments(lineGeometry, lineMaterial);
+        scene.add(lines);
+        
+        camera.position.z = 8;
+        
+        let mouseX = 0;
+        let mouseY = 0;
+        let targetMouseX = 0;
+        let targetMouseY = 0;
+        const smoothFactor = 0.03;
+        
+        document.addEventListener('mousemove', (e) => {
+            targetMouseX = (e.clientX / window.innerWidth) * 2 - 1;
+            targetMouseY = -(e.clientY / window.innerHeight) * 2 + 1;
+        });
+        
+        document.addEventListener('touchmove', (e) => {
+            if (e.touches.length > 0) {
+                targetMouseX = (e.touches[0].clientX / window.innerWidth) * 2 - 1;
+                targetMouseY = -(e.touches[0].clientY / window.innerHeight) * 2 + 1;
+            }
+        });
+        
+        let frameCount = 0;
+        function animate() {
+            requestAnimationFrame(animate);
+            frameCount++;
+            
+            mouseX += (targetMouseX - mouseX) * smoothFactor;
+            mouseY += (targetMouseY - mouseY) * smoothFactor;
+            
+            particleSystem.rotation.y += 0.0005;
+            particleSystem.rotation.x += 0.0002;
+            
+            const positions = particles.attributes.position.array;
+            let lineIndex = 0;
+            const maxConnections = 3;
+            const connectionDistance = 1.5;
+            
+            for (let i = 0; i < particleCount; i++) {
+                const i3 = i * 3;
+                
+                positions[i3] += velocities[i].x;
+                positions[i3 + 1] += velocities[i].y;
+                positions[i3 + 2] += velocities[i].z;
+                
+                const mouseInfluenceX = mouseX * 0.3;
+                const mouseInfluenceY = mouseY * 0.3;
+                
+                positions[i3] += (originalPositions[i].x + mouseInfluenceX - positions[i3]) * 0.01;
+                positions[i3 + 1] += (originalPositions[i].y + mouseInfluenceY - positions[i3 + 1]) * 0.01;
+                positions[i3 + 2] += (originalPositions[i].z - positions[i3 + 2]) * 0.01;
+                
+                if (frameCount % 2 === 0) {
+                    let connections = 0;
+                    for (let j = i + 1; j < particleCount && connections < maxConnections; j++) {
+                        const j3 = j * 3;
+                        const dx = positions[i3] - positions[j3];
+                        const dy = positions[i3 + 1] - positions[j3 + 1];
+                        const dz = positions[i3 + 2] - positions[j3 + 2];
+                        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                        
+                        if (dist < connectionDistance) {
+                            linePositions[lineIndex++] = positions[i3];
+                            linePositions[lineIndex++] = positions[i3 + 1];
+                            linePositions[lineIndex++] = positions[i3 + 2];
+                            linePositions[lineIndex++] = positions[j3];
+                            linePositions[lineIndex++] = positions[j3 + 1];
+                            linePositions[lineIndex++] = positions[j3 + 2];
+                            connections++;
+                        }
+                    }
+                }
+            }
+            
+            if (frameCount % 2 === 0) {
+                lines.geometry.setDrawRange(0, lineIndex / 3);
+                lines.geometry.attributes.position.needsUpdate = true;
+            }
+            
+            particles.attributes.position.needsUpdate = true;
+            
+            camera.position.x += (mouseX * 0.5 - camera.position.x) * 0.02;
+            camera.position.y += (mouseY * 0.5 - camera.position.y) * 0.02;
+            camera.lookAt(scene.position);
+            
+            renderer.render(scene, camera);
+        }
+        
+        animate();
+        
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        // ============================================
+        // GSAP ANIMATIONS
+        // ============================================
+        
+        gsap.registerPlugin(ScrollTrigger);
+        
+        const navbar = document.getElementById('navbar');
+        let lastScroll = 0;
+        
+        window.addEventListener('scroll', () => {
+            const currentScroll = window.pageYOffset;
+            
+            if (currentScroll > 100) {
+                navbar.classList.remove('opacity-0', '-translate-y-full');
+                navbar.classList.add('opacity-100', 'translate-y-0');
+            } else {
+                navbar.classList.add('opacity-0', '-translate-y-full');
+                navbar.classList.remove('opacity-100', 'translate-y-0');
+            }
+            
+            lastScroll = currentScroll;
+        }, { passive: true });
+        
+        gsap.from('.hero-content > *', {
+            opacity: 0,
+            y: 50,
+            duration: 1,
+            stagger: 0.15,
+            ease: 'power3.out',
+            delay: 0.3
+        });
+        
+        gsap.from('.hero-visual', {
+            opacity: 0,
+            x: 100,
+            duration: 1.2,
+            ease: 'power3.out',
+            delay: 0.5
+        });
+        
+        gsap.utils.toArray('.feature-card').forEach((card, i) => {
+            gsap.from(card, {
+                scrollTrigger: {
+                    trigger: card,
+                    start: 'top 85%',
+                    toggleActions: 'play none none reverse'
+                },
+                opacity: 0,
+                y: 60,
+                duration: 0.8,
+                delay: i * 0.1,
+                ease: 'power3.out'
+            });
+        });
+        
+        // ============================================
+        // SLIDESHOW FUNCTIONALITY
+        // ============================================
+        
+        function initSlideshow(containerSelector, slideSelector, indicatorSelector, interval = 4000) {
+            const container = document.querySelector(containerSelector);
+            if (!container) return;
+            
+            const slides = container.querySelectorAll(slideSelector);
+            const indicators = document.querySelectorAll(indicatorSelector);
+            let currentSlide = 0;
+            
+            function showSlide(index) {
+                slides.forEach((slide, i) => {
+                    slide.classList.toggle('active', i === index);
+                });
+                indicators.forEach((ind, i) => {
+                    ind.classList.toggle('bg-phonix-copper', i === index);
+                    ind.classList.toggle('bg-white/30', i !== index);
+                });
+            }
+            
+            function nextSlide() {
+                currentSlide = (currentSlide + 1) % slides.length;
+                showSlide(currentSlide);
+            }
+            
+            setInterval(nextSlide, interval);
+            
+            indicators.forEach((ind, i) => {
+                ind.addEventListener('click', () => {
+                    currentSlide = i;
+                    showSlide(currentSlide);
+                });
+            });
+        }
+        
+        // Initialize hero phone slideshow
+        initSlideshow('.hero-visual .slideshow-container', '.hero-visual .slideshow-slide', '.hero-visual .slide-indicator', 4000);
+        
+        // ============================================
+        // INTERACTIVE ELEMENTS
+        // ============================================
+        
+        document.querySelectorAll('.interactive-element').forEach(el => {
+            el.addEventListener('mouseenter', () => {
+                gsap.to(el, { scale: 1.02, duration: 0.3, ease: 'power2.out' });
+            });
+            el.addEventListener('mouseleave', () => {
+                gsap.to(el, { scale: 1, duration: 0.3, ease: 'power2.out' });
+            });
+        });
+        
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        });
+        
+        document.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                if (!this.closest('a') && !this.classList.contains('slide-indicator')) {
+                    const toast = document.createElement('div');
+                    toast.className = 'fixed bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 bg-phonix-copper/90 text-white rounded-full text-sm font-medium z-50 animate-bounce';
+                    toast.textContent = 'Coming Soon!';
+                    document.body.appendChild(toast);
+                    setTimeout(() => toast.remove(), 2000);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
