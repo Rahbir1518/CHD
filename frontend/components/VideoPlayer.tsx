@@ -79,7 +79,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   return (
     <div 
       ref={containerRef}
-      className="relative aspect-video bg-gray-900 rounded-lg overflow-hidden border border-gray-800 flex items-center justify-center"
+      className="relative aspect-video bg-black/40 rounded-lg overflow-hidden border border-white/10 flex items-center justify-center"
     >
       {frameSrc ? (
         <>
@@ -116,11 +116,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       
       {/* Top-right status badges */}
       <div className="absolute top-2 right-2 flex items-center gap-2">
-        <div className="bg-black/50 px-2 py-1 rounded text-xs text-white backdrop-blur-sm">
+        <div className="bg-black/60 px-2 py-1 rounded text-xs text-[#D4A574] backdrop-blur-sm border border-[#B87333]/20">
           Live Feed
         </div>
         {landmarks.length > 0 && (
-          <div className="bg-green-600/70 px-2 py-1 rounded text-xs text-white backdrop-blur-sm animate-pulse">
+          <div className="bg-[#B87333]/70 px-2 py-1 rounded text-xs text-white backdrop-blur-sm animate-pulse">
             Tracking
           </div>
         )}
@@ -133,7 +133,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
       {/* Lip reading text overlay at top-center */}
       {lipReadingText && (
-        <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-indigo-600/80 px-4 py-2 rounded-lg text-sm text-white font-medium backdrop-blur-sm max-w-[80%] text-center shadow-lg animate-in fade-in">
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-[#B87333]/80 px-4 py-2 rounded-lg text-sm text-white font-medium backdrop-blur-sm max-w-[80%] text-center shadow-lg shadow-[#B87333]/30 animate-in fade-in">
           &ldquo;{lipReadingText}&rdquo;
         </div>
       )}
@@ -146,7 +146,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               <span className="text-gray-400">Mouth:</span>
               <div className="w-16 h-1.5 bg-gray-700 rounded-full overflow-hidden">
                 <div 
-                  className="h-full bg-green-400 rounded-full transition-all duration-100" 
+                  className="h-full bg-[#D4A574] rounded-full transition-all duration-100" 
                   style={{ width: `${Math.min(mouthOpenness * 100, 100)}%` }}
                 />
               </div>

@@ -239,8 +239,8 @@ export default function TranscriptionPanel({
   return (
     <div className="space-y-4">
       {/* Live Transcription */}
-      <div className="bg-gray-900 rounded-xl border border-gray-800 p-4">
-        <h3 className="text-sm font-semibold text-gray-400 mb-3 flex items-center gap-2">
+      <div className="bg-black/20 rounded-xl border border-white/10 p-4">
+        <h3 className="text-sm font-semibold text-[#D4A574] mb-3 flex items-center gap-2">
           {isListening && (
             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
           )}
@@ -251,21 +251,21 @@ export default function TranscriptionPanel({
           {!isListening ? (
             <button
               onClick={startListening}
-              className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+              className="flex-1 bg-gradient-to-r from-emerald-700 to-emerald-600 hover:from-emerald-600 hover:to-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/20"
             >
               Start Listening
             </button>
           ) : (
             <button
               onClick={stopListening}
-              className="flex-1 bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+              className="flex-1 bg-white/10 hover:bg-white/15 border border-white/10 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2"
             >
               ⏹ Stop Listening
             </button>
           )}
           <button
             onClick={clearTranscript}
-            className="bg-gray-700 hover:bg-gray-600 text-white px-3 py-2 rounded-lg text-sm transition-colors"
+            className="bg-white/5 hover:bg-white/10 border border-white/10 text-white px-3 py-2 rounded-lg text-sm transition-all"
           >
             Clear
           </button>
@@ -278,7 +278,7 @@ export default function TranscriptionPanel({
         )}
 
         {/* Transcript display */}
-        <div className="bg-gray-800 rounded-lg p-3 min-h-[60px] mb-3">
+        <div className="bg-black/30 rounded-lg p-3 min-h-[60px] mb-3">
           <div className="text-sm text-white">
             {transcript || (
               <span className="text-gray-600 italic">
@@ -295,8 +295,8 @@ export default function TranscriptionPanel({
       </div>
 
       {/* Translation */}
-      <div className="bg-gray-900 rounded-xl border border-gray-800 p-4">
-        <h3 className="text-sm font-semibold text-gray-400 mb-3">
+      <div className="bg-black/20 rounded-xl border border-white/10 p-4">
+        <h3 className="text-sm font-semibold text-[#D4A574] mb-3">
           Translation
         </h3>
 
@@ -304,7 +304,7 @@ export default function TranscriptionPanel({
           <select
             value={targetLanguage}
             onChange={(e) => setTargetLanguage(e.target.value)}
-            className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
+            className="flex-1 bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#B87333] focus:ring-1 focus:ring-[#B87333]/50 transition-colors"
           >
             {LANGUAGES.map((lang) => (
               <option key={lang} value={lang}>
@@ -315,7 +315,7 @@ export default function TranscriptionPanel({
           <button
             onClick={() => translateText(transcript)}
             disabled={!transcript || isTranslating}
-            className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            className="bg-gradient-to-r from-[#B87333] to-[#9a6229] hover:from-[#D4A574] hover:to-[#B87333] disabled:opacity-40 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-lg shadow-[#B87333]/20"
           >
             {isTranslating ? "..." : "Translate"}
           </button>
@@ -326,14 +326,14 @@ export default function TranscriptionPanel({
             type="checkbox"
             checked={autoTranslate}
             onChange={(e) => setAutoTranslate(e.target.checked)}
-            className="rounded bg-gray-800 border-gray-600"
+            className="rounded bg-black/30 border-[#B87333]/30"
           />
           Auto-translate new speech
         </label>
 
         {/* Translation output */}
-        <div className="bg-gray-800 rounded-lg p-3 min-h-[60px]">
-          <div className="text-sm text-indigo-300">
+        <div className="bg-black/30 rounded-lg p-3 min-h-[60px]">
+          <div className="text-sm text-[#D4A574]">
             {translation || (
               <span className="text-gray-600 italic">
                 Translation will appear here
@@ -345,20 +345,20 @@ export default function TranscriptionPanel({
 
       {/* Translation History */}
       {history.length > 0 && (
-        <div className="bg-gray-900 rounded-xl border border-gray-800 p-4">
-          <h3 className="text-sm font-semibold text-gray-400 mb-3">
+        <div className="bg-black/20 rounded-xl border border-white/10 p-4">
+          <h3 className="text-sm font-semibold text-[#D4A574] mb-3">
             Recent Translations
           </h3>
           <div className="space-y-2 max-h-40 overflow-y-auto">
             {history.map((item, i) => (
               <div
                 key={`${item.timestamp}-${i}`}
-                className="bg-gray-800/50 rounded-lg p-2 text-xs"
+                className="bg-black/30 rounded-lg p-2 text-xs"
               >
                 <div className="text-white mb-1">{item.text}</div>
-                <div className="text-indigo-400">
+                <div className="text-[#D4A574]">
                   → {item.translation}{" "}
-                  <span className="text-gray-600">({item.lang})</span>
+                  <span className="text-gray-500">({item.lang})</span>
                 </div>
               </div>
             ))}

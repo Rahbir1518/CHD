@@ -61,15 +61,15 @@ export default function LipReadingPanel({
       </div>
 
       {/* Latest Detection */}
-      <div className="bg-gray-900 rounded-xl border border-gray-800 p-4">
-        <h3 className="text-sm font-semibold text-gray-400 mb-3">
+      <div className="bg-black/20 rounded-xl border border-white/10 p-4">
+        <h3 className="text-sm font-semibold text-[#D4A574] mb-3">
           Lip Reading Detection
         </h3>
 
         {latestResult && latestResult.detected_text ? (
           <div className="space-y-3">
             {/* Detected Text */}
-            <div className="bg-gray-800 rounded-lg p-3">
+            <div className="bg-black/30 rounded-lg p-3">
               <div className="text-white text-base font-medium leading-relaxed">
                 &ldquo;{latestResult.detected_text}&rdquo;
               </div>
@@ -96,7 +96,7 @@ export default function LipReadingPanel({
                   {latestResult.phonemes_detected.map((p, i) => (
                     <span
                       key={i}
-                      className="bg-indigo-900/40 text-indigo-300 px-2 py-0.5 rounded text-xs font-mono border border-indigo-800/50"
+                      className="bg-[#B87333]/20 text-[#D4A574] px-2 py-0.5 rounded text-xs font-mono border border-[#B87333]/30"
                     >
                       {p}
                     </span>
@@ -113,7 +113,7 @@ export default function LipReadingPanel({
             )}
           </div>
         ) : (
-          <div className="bg-gray-800 rounded-lg p-4 text-center">
+          <div className="bg-black/30 rounded-lg p-4 text-center">
             <div className="text-gray-600 text-sm">
               {isAnalyzing
                 ? "Analyzing lip movements..."
@@ -125,8 +125,8 @@ export default function LipReadingPanel({
 
       {/* History */}
       {history.length > 0 && (
-        <div className="bg-gray-900 rounded-xl border border-gray-800 p-4">
-          <h3 className="text-sm font-semibold text-gray-400 mb-3">
+        <div className="bg-black/20 rounded-xl border border-white/10 p-4">
+          <h3 className="text-sm font-semibold text-[#D4A574] mb-3">
             Detection History
           </h3>
           <div className="space-y-2 max-h-48 overflow-y-auto">
@@ -136,7 +136,7 @@ export default function LipReadingPanel({
               .map((entry, i) => (
                 <div
                   key={`${entry.timestamp}-${i}`}
-                  className="bg-gray-800/50 rounded-lg p-2 text-xs flex items-center justify-between"
+                  className="bg-black/30 rounded-lg p-2 text-xs flex items-center justify-between"
                 >
                   <div className="flex-1 min-w-0">
                     <div className="text-white truncate">

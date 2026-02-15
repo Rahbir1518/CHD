@@ -19,10 +19,10 @@ interface PhonemeTimelineProps {
 }
 
 const PHONEME_COLORS: Record<string, string> = {
-  vowel: 'bg-green-500',
-  consonant: 'bg-blue-500',
-  buzz: 'bg-yellow-500',
-  silence: 'bg-gray-400',
+  vowel: 'bg-emerald-500',
+  consonant: 'bg-[#B87333]',
+  buzz: 'bg-amber-500',
+  silence: 'bg-gray-600',
 };
 
 const PhonemeTimeline: React.FC<PhonemeTimelineProps> = ({
@@ -55,7 +55,7 @@ const PhonemeTimeline: React.FC<PhonemeTimelineProps> = ({
     return (
       <div className="space-y-3">
         {/* Timeline bar */}
-        <div className="relative h-10 bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
+        <div className="relative h-10 bg-black/30 rounded-lg overflow-hidden border border-white/10">
           {phonemes.map(p => {
             const left = (p.start / totalDuration) * 100;
             const width = (p.duration / totalDuration) * 100;
@@ -66,8 +66,8 @@ const PhonemeTimeline: React.FC<PhonemeTimelineProps> = ({
               <div
                 key={p.id}
                 className={`absolute top-0 h-full flex items-center justify-center text-[10px] font-bold text-white border-r ${
-                  PHONEME_COLORS[p.type] || 'bg-gray-500'
-                } ${isActive ? 'ring-2 ring-white ring-inset opacity-100' : 'opacity-70'}`}
+                  PHONEME_COLORS[p.type] || 'bg-gray-600'
+                } ${isActive ? 'ring-2 ring-[#D4A574] ring-inset opacity-100 shadow-[0_0_8px_rgba(184,115,51,0.5)]' : 'opacity-70'}`}
                 style={{ left: `${left}%`, width: `${Math.max(width, 0.5)}%` }}
                 title={`${p.character || p.type} – ${p.word}`}
               >
@@ -78,13 +78,13 @@ const PhonemeTimeline: React.FC<PhonemeTimelineProps> = ({
 
           {/* Playhead */}
           <div
-            className="absolute top-0 h-full w-0.5 bg-red-500 z-10 transition-all duration-100"
+            className="absolute top-0 h-full w-0.5 bg-[#D4A574] z-10 transition-all duration-100 shadow-[0_0_6px_rgba(212,165,116,0.6)]"
             style={{ left: `${(currentTime / totalDuration) * 100}%` }}
           />
         </div>
 
         {/* Legend */}
-        <div className="flex items-center gap-4 text-[10px] text-gray-500">
+        <div className="flex items-center gap-4 text-[10px] text-gray-400">
           {Object.entries(PHONEME_COLORS).map(([type, color]) => (
             <div key={type} className="flex items-center gap-1">
               <div className={`w-2 h-2 rounded-sm ${color}`} />
@@ -100,7 +100,7 @@ const PhonemeTimeline: React.FC<PhonemeTimelineProps> = ({
   return (
     <div className="space-y-3">
       {/* Live mouth-openness waveform */}
-      <div className="relative h-16 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 flex items-end">
+      <div className="relative h-16 bg-black/30 rounded-lg overflow-hidden border border-white/10 flex items-end">
         {recentPhonemes.length === 0 ? (
           <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
             Phoneme activity will appear here during a lesson
@@ -114,7 +114,7 @@ const PhonemeTimeline: React.FC<PhonemeTimelineProps> = ({
               <div
                 key={`${p.timestamp}-${i}`}
                 className={`flex-1 transition-all duration-200 rounded-t-sm ${
-                  PHONEME_COLORS[p.type] || 'bg-gray-500'
+                  PHONEME_COLORS[p.type] || 'bg-gray-600'
                 }`}
                 style={{
                   height: `${barHeight}%`,
@@ -133,8 +133,8 @@ const PhonemeTimeline: React.FC<PhonemeTimelineProps> = ({
           {currentPhoneme ? (
             <span
               className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold text-white ${
-                PHONEME_COLORS[currentPhoneme] || 'bg-gray-500'
-              } animate-pulse`}
+                PHONEME_COLORS[currentPhoneme] || 'bg-gray-600'
+              } animate-pulse shadow-lg`}
             >
               <span className="w-1.5 h-1.5 rounded-full bg-white" />
               {currentPhoneme.toUpperCase()}
@@ -145,11 +145,11 @@ const PhonemeTimeline: React.FC<PhonemeTimelineProps> = ({
         </div>
 
         {/* Mouth openness bar */}
-        <div className="flex items-center gap-2 text-xs text-gray-500">
-          <span className="text-gray-400">Mouth</span>
-          <div className="w-20 h-2 bg-gray-200 rounded-full overflow-hidden">
+        <div className="flex items-center gap-2 text-xs text-gray-400">
+          <span className="text-gray-500">Mouth</span>
+          <div className="w-20 h-2 bg-white/10 rounded-full overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-green-400 to-green-600 rounded-full transition-all duration-75"
+              className="h-full bg-gradient-to-r from-[#B87333] to-[#D4A574] rounded-full transition-all duration-75"
               style={{ width: `${Math.min(mouthOpenness * 100, 100)}%` }}
             />
           </div>

@@ -232,8 +232,8 @@ export default function RecordingControls({
   return (
     <div className="space-y-4">
       {/* Recording Controls */}
-      <div className="bg-gray-900 rounded-xl border border-gray-800 p-4">
-        <h3 className="text-sm font-semibold text-gray-400 mb-3 flex items-center gap-2">
+      <div className="bg-black/20 rounded-xl border border-white/10 p-4">
+        <h3 className="text-sm font-semibold text-[#D4A574] mb-3 flex items-center gap-2">
           {isRecording && (
             <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
           )}
@@ -247,7 +247,7 @@ export default function RecordingControls({
             value={recordingName}
             onChange={(e) => setRecordingName(e.target.value)}
             placeholder="Recording name (optional)"
-            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white mb-3 focus:outline-none focus:border-indigo-500"
+            className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white mb-3 focus:outline-none focus:border-[#B87333] focus:ring-1 focus:ring-[#B87333]/50 transition-colors placeholder:text-gray-600"
           />
         )}
 
@@ -256,7 +256,7 @@ export default function RecordingControls({
             <button
               onClick={startRecording}
               disabled={!isLive}
-              className="flex-1 bg-red-600 hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+              className="flex-1 bg-gradient-to-r from-red-700 to-red-600 hover:from-red-600 hover:to-red-500 disabled:opacity-40 disabled:cursor-not-allowed text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-900/30"
             >
               <span className="w-3 h-3 rounded-full bg-white" />
               Start Recording
@@ -264,7 +264,7 @@ export default function RecordingControls({
           ) : (
             <button
               onClick={stopRecording}
-              className="flex-1 bg-gray-600 hover:bg-gray-500 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+              className="flex-1 bg-white/10 hover:bg-white/15 border border-white/10 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2"
             >
               <span className="w-3 h-3 rounded-sm bg-white" />
               Stop ({formatDuration(recordingDuration)})
@@ -285,19 +285,19 @@ export default function RecordingControls({
 
       {/* Playback Controls (visible during playback) */}
       {isPlaying && (
-        <div className="bg-gray-900 rounded-xl border border-indigo-700 p-4">
-          <h3 className="text-sm font-semibold text-indigo-400 mb-3">
+        <div className="bg-black/20 rounded-xl border border-[#B87333]/40 p-4">
+          <h3 className="text-sm font-semibold text-[#D4A574] mb-3">
             Playing Recording
           </h3>
-          <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden mb-3">
+          <div className="w-full h-2 bg-black/30 rounded-full overflow-hidden mb-3">
             <div
-              className="h-full bg-indigo-500 rounded-full transition-all duration-100"
+              className="h-full bg-gradient-to-r from-[#B87333] to-[#D4A574] rounded-full transition-all duration-100"
               style={{ width: `${playbackProgress * 100}%` }}
             />
           </div>
           <button
             onClick={stopPlayback}
-            className="w-full bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            className="w-full bg-gradient-to-r from-[#B87333] to-[#9a6229] hover:from-[#D4A574] hover:to-[#B87333] text-white px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-lg shadow-[#B87333]/20"
           >
             ⏹ Stop Playback
           </button>
@@ -305,9 +305,9 @@ export default function RecordingControls({
       )}
 
       {/* Saved Recordings List */}
-      <div className="bg-gray-900 rounded-xl border border-gray-800 p-4">
+      <div className="bg-black/20 rounded-xl border border-white/10 p-4">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold text-gray-400">
+          <h3 className="text-sm font-semibold text-[#D4A574]">
             Saved Recordings ({recordings.length})
           </h3>
           <span className="text-[10px] text-gray-600 font-mono">
@@ -326,8 +326,8 @@ export default function RecordingControls({
                 key={rec.id}
                 className={`p-3 rounded-lg border text-xs transition-colors ${
                   playbackSessionId === rec.id
-                    ? "bg-indigo-900/30 border-indigo-600"
-                    : "bg-gray-800/50 border-gray-700 hover:border-gray-600"
+                    ? "bg-[#B87333]/10 border-[#B87333]/40"
+                    : "bg-black/30 border-white/10 hover:border-[#B87333]/30"
                 }`}
               >
                 <div className="flex items-center justify-between mb-1">
@@ -348,7 +348,7 @@ export default function RecordingControls({
                   </div>
                 )}
                 {rec.translation && (
-                  <div className="text-indigo-400 mb-1 truncate">
+                  <div className="text-[#D4A574] mb-1 truncate">
                     {rec.translation}
                   </div>
                 )}
@@ -356,14 +356,14 @@ export default function RecordingControls({
                   <button
                     onClick={() => startPlayback(rec.id)}
                     disabled={isPlaying || isRecording}
-                    className="flex-1 bg-green-700 hover:bg-green-600 disabled:opacity-40 text-white px-2 py-1.5 rounded text-xs font-medium transition-colors"
+                    className="flex-1 bg-gradient-to-r from-emerald-700 to-emerald-600 hover:from-emerald-600 hover:to-emerald-500 disabled:opacity-40 text-white px-2 py-1.5 rounded text-xs font-medium transition-all shadow-lg shadow-emerald-900/20"
                   >
                     ▶ Play with Haptics
                   </button>
                   <button
                     onClick={() => handleDelete(rec.id)}
                     disabled={isPlaying && playbackSessionId === rec.id}
-                    className="bg-red-800 hover:bg-red-700 disabled:opacity-40 text-white px-2 py-1.5 rounded text-xs font-medium transition-colors"
+                    className="bg-red-800/80 hover:bg-red-700 disabled:opacity-40 text-white px-2 py-1.5 rounded text-xs font-medium transition-all"
                   >
                     Del
                   </button>
