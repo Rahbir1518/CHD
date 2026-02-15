@@ -41,7 +41,7 @@ app.add_middleware(
 
 # Global components
 media_processor = MediaPipeProcessor()
-speech_pipeline = SpeechHapticPipeline(GEMINI_API_KEY)
+speech_pipeline = SpeechHapticPipeline(ELEVENLABS_API_KEY)
 tts_manager = TTSManager(ELEVENLABS_API_KEY)
 
 # Set up callbacks for phoneme engine
@@ -379,16 +379,16 @@ async def lip_read_history():
     return {"history": lip_reader.get_history(20)}
 
 
-# ── Gemini Transcription & Translation ──────────────────────────────────────
+# ── ElevenLabs Live Transcription & Gemini Translation ────────────────────────
 
 @app.post("/api/transcribe")
 async def transcribe_audio(request: Request):
     """
-    Transcribe audio using Gemini.
+    Transcribe audio using ElevenLabs Speech-to-Text.
     Accepts JSON with { audio_base64: string, mime_type?: string }
     """
-    if not GEMINI_API_KEY:
-        return JSONResponse(status_code=500, content={"error": "GEMINI_API_KEY not configured"})
+    if not ELEVENLABS_API_KEY:
+        return JSONResponse(status_code=500, content={"error": "ELEVENLABS_API_KEY not configured"})
 
     data = await request.json()
     audio_b64 = data.get("audio_base64", "")
@@ -397,39 +397,39 @@ async def transcribe_audio(request: Request):
     if not audio_b64:
         return JSONResponse(status_code=400, content={"error": "No audio data provided"})
 
-    # Gemini 1.5 Flash supports audio input; 2.0 may have different endpoint
-    model = "gemini-1.5-flash"
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}"
+    # Map mime type to file extension for ElevenLabs
+    ext_map = {"audio/webm": "webm", "audio/wav": "wav", "audio/mp4": "mp4", "audio/mpeg": "mp3"}
+    ext = ext_map.get(mime_type, "webm")
+    audio_bytes = base64.b64decode(audio_b64)
+    filename = f"audio.{ext}"
 
-    payload = {
-        "contents": [
-            {
-                "parts": [
-                    {"inline_data": {"mime_type": mime_type, "data": audio_b64}},
-                    {"text": "Transcribe this audio exactly. Return ONLY the transcribed text, nothing else. If the audio is silent or unclear, return an empty string."},
-                ]
-            }
-        ],
-        "generationConfig": {"temperature": 0.1, "maxOutputTokens": 1024},
-    }
+    url = "https://api.elevenlabs.io/v1/speech-to-text"
+    headers = {"xi-api-key": ELEVENLABS_API_KEY}
 
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.post(url, json=payload)
+            files = {"file": (filename, audio_bytes)}
+            data_form = {"model_id": "scribe_v2"}
+            resp = await client.post(url, headers=headers, files=files, data=data_form)
             body = resp.json() if resp.content else {}
-            if not resp.is_success:
-                err_msg = body.get("error", {}).get("message", resp.text) or resp.text
-                print(f"Gemini transcription API error: {err_msg}")
-                return JSONResponse(status_code=resp.status_code, content={"error": err_msg})
 
-        transcript = ""
-        if "candidates" in body and body["candidates"]:
-            parts = body["candidates"][0].get("content", {}).get("parts", [])
-            if parts:
-                transcript = (parts[0].get("text") or "").strip()
+            if not resp.is_success:
+                detail = body.get("detail")
+                if isinstance(detail, list) and detail:
+                    err_msg = detail[0].get("message", str(detail[0])) if isinstance(detail[0], dict) else str(detail[0])
+                elif isinstance(detail, dict):
+                    err_msg = detail.get("message", str(detail))
+                else:
+                    err_msg = body.get("message", resp.text) or resp.text
+                if isinstance(err_msg, dict):
+                    err_msg = str(err_msg)
+                print(f"ElevenLabs transcription API error: {err_msg}")
+                return JSONResponse(status_code=resp.status_code, content={"error": str(err_msg)})
+
+        transcript = body.get("text", "").strip() if isinstance(body.get("text"), str) else ""
         return {"transcript": transcript}
     except Exception as e:
-        print(f"Gemini transcription error: {e}")
+        print(f"ElevenLabs transcription error: {e}")
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 
@@ -518,7 +518,7 @@ async def websocket_speech_haptic(websocket: WebSocket):
 
 @app.post("/api/speech-haptic/start")
 async def start_speech_haptic():
-    """Start the speech-to-haptic pipeline (begins mic capture + Gemini STT)."""
+    """Start the speech-to-haptic pipeline (begins mic capture + ElevenLabs STT)."""
     if speech_pipeline.status.running:
         return {"message": "Pipeline already running", **speech_pipeline.get_status()}
     speech_pipeline.start()

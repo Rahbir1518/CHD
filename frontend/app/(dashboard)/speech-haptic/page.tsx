@@ -107,7 +107,7 @@ export default function SpeechHapticPage() {
         <div className="mx-4 mt-3 p-3 bg-indigo-950/50 border border-indigo-500/20 rounded-xl text-xs text-indigo-300 leading-relaxed">
           <p className="font-semibold mb-1">How it works:</p>
           <p>
-            Your laptop mic captures speech → Gemini AI transcribes in real-time
+            Your laptop mic captures speech → ElevenLabs transcribes in real-time
             → transcript is split into natural phrases → each phrase triggers a
             haptic vibration on this phone. Louder speech = stronger vibrations.
           </p>

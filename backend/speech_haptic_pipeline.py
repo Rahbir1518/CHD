@@ -2,7 +2,7 @@
 speech_haptic_pipeline.py
 Real-time speech-to-haptic notification pipeline.
 
-Captures laptop microphone audio → transcribes via Gemini → chunks into
+Captures laptop microphone audio → transcribes via ElevenLabs → chunks into
 meaningful segments → broadcasts haptic vibration events to phones via
 WebSocket callback.
 """
@@ -29,7 +29,7 @@ SAMPLE_RATE = 16000
 CHANNELS = 1
 SAMPLE_WIDTH = 2           # 16-bit
 CHUNK_FRAMES = 1600        # 100 ms per PyAudio read
-RECORD_SECONDS = 1.2       # How much audio to buffer before sending to Gemini
+RECORD_SECONDS = 1.2       # How much audio to buffer before sending to ElevenLabs
 SILENCE_RMS_THRESHOLD = 0.01  # Below this → considered silence
 
 # Phrase-splitting heuristics
@@ -188,14 +188,14 @@ class AudioCapture:
 
 
 # ---------------------------------------------------------------------------
-# GeminiTranscriber — async speech-to-text
+# ElevenLabsTranscriber — async speech-to-text
 # ---------------------------------------------------------------------------
-class GeminiTranscriber:
-    """Sends audio chunks to Gemini for transcription."""
+class ElevenLabsTranscriber:
+    """Sends audio chunks to ElevenLabs Speech-to-Text for transcription."""
 
     def __init__(self, api_key: str):
         self.api_key = api_key
-        self.model = "gemini-1.5-flash"
+        self.url = "https://api.elevenlabs.io/v1/speech-to-text"
         self._client: Optional[httpx.AsyncClient] = None
 
     async def _get_client(self) -> httpx.AsyncClient:
@@ -205,43 +205,25 @@ class GeminiTranscriber:
 
     async def transcribe(self, wav_base64: str) -> str:
         """Transcribe a WAV audio chunk. Returns transcript text or ''."""
-        url = (
-            f"https://generativelanguage.googleapis.com/v1beta/models/"
-            f"{self.model}:generateContent?key={self.api_key}"
-        )
-        payload = {
-            "contents": [
-                {
-                    "parts": [
-                        {"inline_data": {"mime_type": "audio/wav", "data": wav_base64}},
-                        {
-                            "text": (
-                                "Transcribe this audio exactly. Return ONLY the "
-                                "transcribed text, nothing else. If the audio is "
-                                "silent or unclear, return an empty string."
-                            ),
-                        },
-                    ]
-                }
-            ],
-            "generationConfig": {"temperature": 0.1, "maxOutputTokens": 512},
-        }
+        if not self.api_key:
+            print("ElevenLabs STT: No API key")
+            return ""
+        audio_bytes = base64.b64decode(wav_base64)
+        headers = {"xi-api-key": self.api_key}
+        files = {"file": ("audio.wav", audio_bytes)}
+        data_form = {"model_id": "scribe_v2"}
 
         try:
             client = await self._get_client()
-            resp = await client.post(url, json=payload)
+            resp = await client.post(self.url, headers=headers, files=files, data=data_form)
             body = resp.json() if resp.content else {}
             if not resp.is_success:
-                err = body.get("error", {}).get("message", resp.text)
-                print(f"Gemini STT error: {err}")
+                err = body.get("detail", {}).get("message", body.get("message", resp.text))
+                print(f"ElevenLabs STT error: {err}")
                 return ""
-            candidates = body.get("candidates", [])
-            if candidates:
-                parts = candidates[0].get("content", {}).get("parts", [])
-                if parts:
-                    return (parts[0].get("text") or "").strip()
+            return (body.get("text") or "").strip()
         except Exception as e:
-            print(f"Gemini STT exception: {e}")
+            print(f"ElevenLabs STT exception: {e}")
         return ""
 
     async def close(self):
@@ -254,13 +236,13 @@ class GeminiTranscriber:
 # ---------------------------------------------------------------------------
 class SpeechHapticPipeline:
     """
-    Captures mic → Gemini STT → phrase chunks → haptic events.
+    Captures mic → ElevenLabs STT → phrase chunks → haptic events.
     Call `set_broadcast_callback` to wire up the WebSocket broadcast.
     """
 
     def __init__(self, api_key: str):
         self.audio = AudioCapture()
-        self.transcriber = GeminiTranscriber(api_key)
+        self.transcriber = ElevenLabsTranscriber(api_key)
         self.status = PipelineStatus()
         self._task: Optional[asyncio.Task] = None
         self._broadcast_cb: Optional[Callable[[dict], Awaitable[None]]] = None
@@ -326,7 +308,7 @@ class SpeechHapticPipeline:
                     "timestamp": chunk.timestamp,
                 })
 
-            # Skip Gemini if silence
+            # Skip ElevenLabs if silence
             if chunk.rms < SILENCE_RMS_THRESHOLD:
                 continue
 
